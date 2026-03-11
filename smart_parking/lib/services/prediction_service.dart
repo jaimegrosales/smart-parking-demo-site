@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 
 class PredictionService {
-  static const String _baseUrl = 'http://127.0.0.1:5000'; // Flask API URL
+  static const String _baseUrl = ApiConfig.backendBaseUrl;
   
   /// Get parking availability prediction
   Future<Map<String, dynamic>?> getPrediction({

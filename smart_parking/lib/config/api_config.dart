@@ -20,4 +20,12 @@ class ApiConfig {
   
   // Other API keys can be added here
   // static const String googleMapsApiKey = 'your_google_maps_key_here';
+
+  // Backend API base URL used by live counter + prediction endpoints.
+  // Override at build time with:
+  // --dart-define=BACKEND_BASE_URL=https://your-backend-host
+  static const String backendBaseUrl = String.fromEnvironment(
+    'BACKEND_BASE_URL',
+    defaultValue: 'http://127.0.0.1:8000',
+  );
 }

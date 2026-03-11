@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 //import 'package:mysql1/mysql1.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../config/api_config.dart';
 String translateName(String name) {
   String result = "";
   switch (name) {
@@ -450,7 +451,7 @@ Future<String> fetchOne(String deck) async {
 */
 Future<Map<int, int>?> fetchAll() async {
   Map<int, int> result = {};
-  const String apiUrl = 'http://127.0.0.1:8000/decks'; // The correct, working endpoint
+  final String apiUrl = '${ApiConfig.backendBaseUrl}/decks';
 
   try {
     final response = await http.get(Uri.parse(apiUrl));
