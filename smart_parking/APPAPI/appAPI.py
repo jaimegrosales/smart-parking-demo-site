@@ -134,8 +134,15 @@ def predict_parking():
     except Exception as e:
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
+@app.route('/', methods=['GET'])
+@cross_origin()
 def home():
-    return "Welcome to the Flask REST API!"
+    return jsonify({"status": "ok", "message": "Smart Parking API is running"})
+
+@app.route('/health', methods=['GET'])
+@cross_origin()
+def health():
+    return jsonify({"status": "ok"})
 
 if __name__ == '__main__':
     app.run(debug=True)
