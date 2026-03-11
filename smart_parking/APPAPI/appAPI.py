@@ -1,6 +1,10 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS, cross_origin
 from datetime import datetime
+import threading
+import time
+import requests
+import xml.etree.ElementTree as ET
 from prediction_service import predict_parking_availability
 
 app = Flask(__name__)
@@ -44,6 +48,88 @@ decks = [
     {"name": "masonElectric", "value": 0},
     {"name": "masonFaculty", "value": 0}
 ]
+
+# JMU sign feed and zone-to-deck mapping for live counter updates.
+JMU_PARKING_FEED = (
+    "https://www.jmu.edu/cgi-bin/parking_sign_data.cgi?hash="
+    "53616c7465645f5f4c03eadd986acf07775e314a27e46ac7b36f35b8887e4e67"
+    "ea5489a0733beab3e908f947f1a121913b0c1bbaa8d855d0a76820c2ce3b3b4f9"
+    "c78a1a4638afe82e66c5e27e2c5af01|869835tg89dhkdnbnsv5sg5wg0vmcf4mfc"
+    "fc2qwm5968unmeh5"
+)
+
+ZONE_TO_DECK = {
+    '33': 'chesapeakeAccessible',
+    '34': 'chesapeakeElectric',
+    '19': 'chesapeakeCommuter',
+    '29': 'ballardAccessible',
+    '30': 'ballardElectric',
+    '27': 'ballardFaculty',
+    '22': 'ballardCommuter',
+    '31': 'championsAccessible',
+    '13': 'championsCommuter',
+    '40': 'championsFaculty',
+    '32': 'championsElectric',
+    '38': 'warsawAccessible',
+    '39': 'warsawElectric',
+    '41': 'warsawFaculty',
+    '42': 'warsawCommuter',
+    '35': 'graceAccessible',
+    '36': 'graceElectric',
+    '6': 'graceFaculty',
+    '4': 'graceCommuter',
+    '37': 'masonAccessible',
+    '28': 'masonElectric',
+    '12': 'masonFaculty',
+}
+
+
+def _update_decks_from_feed_once() -> None:
+    """Fetch one snapshot from JMU and update in-memory deck values."""
+    response = requests.get(JMU_PARKING_FEED, timeout=20)
+    response.raise_for_status()
+    root = ET.fromstring(response.text)
+
+    updated = 0
+    for zone_vacancy in root.findall('./ZoneVacanSpaces'):
+        zone_id = zone_vacancy.findtext('ZoneId')
+        if zone_id not in ZONE_TO_DECK:
+            continue
+
+        result_text = zone_vacancy.findtext('Result')
+        if result_text is None:
+            continue
+
+        try:
+            value = int(result_text)
+        except ValueError:
+            continue
+
+        deck_name = ZONE_TO_DECK[zone_id]
+        deck = next((d for d in decks if d['name'] == deck_name), None)
+        if deck is not None:
+            deck['value'] = value
+            updated += 1
+
+    print(f"Live update complete: {updated} zones refreshed")
+
+
+def _poll_jmu_feed_forever() -> None:
+    """Background loop to keep live deck values fresh in hosted environments."""
+    while True:
+        try:
+            _update_decks_from_feed_once()
+        except Exception as exc:
+            print(f"Live feed update error: {exc}")
+        time.sleep(60)
+
+
+def _start_live_updater() -> None:
+    updater = threading.Thread(target=_poll_jmu_feed_forever, daemon=True)
+    updater.start()
+
+
+_start_live_updater()
 
 # Get a single parking deck by name
 @app.route('/decks/<string:deck_name>', methods=['GET'])
