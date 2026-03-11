@@ -1,0 +1,82 @@
+Event ID,Title,Description,Event Type,Event DateTime,Duration (min),Location,Special?
+666,Spring Break,,,3/9/2024 12:00:00 AM,60,,True
+667,Spring Break,,,3/10/2024 12:00:00 AM,60,,True
+668,Spring Break,,,3/11/2024 12:00:00 AM,60,,True
+669,Spring Break,,,3/12/2024 12:00:00 AM,60,,True
+670,Spring Break,,,3/13/2024 12:00:00 AM,60,,True
+671,Spring Break,,,3/14/2024 12:00:00 AM,60,,True
+672,Spring Break,,,3/15/2024 12:00:00 AM,60,,True
+673,Spring Break,,,3/16/2024 12:00:00 AM,60,,True
+674,Spring Break,,,3/17/2024 12:00:00 AM,60,,True
+675,Memorial Day,,,5/27/2024 12:00:00 AM,60,,True
+676,Juneteenth,,,6/19/2024 12:00:00 AM,60,,True
+677,Independence Day,,,7/4/2024 12:00:00 AM,60,,True
+683,Labor Day,,,9/2/2024 12:00:00 AM,60,,True
+684,Home Football Game,,,9/7/2024 12:00:00 AM,60,,True
+745,Family Weekend,,,9/27/2024 12:00:00 AM,60,,True
+746,Family Weekend,,,9/28/2024 12:00:00 AM,60,,True
+685,Home Football Game,,,9/28/2024 12:00:00 AM,60,,True
+747,Family Weekend,,,9/29/2024 12:00:00 AM,60,,True
+686,Home Football Game,,,10/10/2024 12:00:00 AM,60,,True
+687,Fall Break,,,10/16/2024 12:00:00 AM,60,,True
+688,Fall Break,,,10/17/2024 12:00:00 AM,60,,True
+689,Fall Break,,,10/18/2024 12:00:00 AM,60,,True
+690,Fall Break,,,10/19/2024 12:00:00 AM,60,,True
+691,Fall Break,,,10/20/2024 12:00:00 AM,60,,True
+692,Home Football Game (Homecoming),,,10/26/2024 12:00:00 AM,60,,True
+693,Home Football Game,,,11/9/2024 12:00:00 AM,60,,True
+694,Thanksgiving Break,,,11/25/2024 12:00:00 AM,60,,True
+695,Thanksgiving Break,,,11/26/2024 12:00:00 AM,60,,True
+696,Thanksgiving Break,,,11/27/2024 12:00:00 AM,60,,True
+697,Thanksgiving Break,,,11/28/2024 12:00:00 AM,60,,True
+698,Thanksgiving Break,,,11/29/2024 12:00:00 AM,60,,True
+699,Home Football Game,,,11/30/2024 12:00:00 AM,60,,True
+700,Exam Week,,,12/9/2024 12:00:00 AM,60,,True
+701,Exam Week,,,12/10/2024 12:00:00 AM,60,,True
+702,Exam Week,,,12/11/2024 12:00:00 AM,60,,True
+703,Exam Week,,,12/12/2024 12:00:00 AM,60,,True
+704,Exam Week,,,12/13/2024 12:00:00 AM,60,,True
+705,Winter Break,,,12/14/2024 12:00:00 AM,60,,True
+706,Winter Break,,,12/15/2024 12:00:00 AM,60,,True
+707,Winter Break,,,12/16/2024 12:00:00 AM,60,,True
+708,Winter Break,,,12/17/2024 12:00:00 AM,60,,True
+709,Winter Break,,,12/18/2024 12:00:00 AM,60,,True
+710,Winter Break,,,12/19/2024 12:00:00 AM,60,,True
+711,Winter Break,,,12/20/2024 12:00:00 AM,60,,True
+712,Winter Break,,,12/21/2024 12:00:00 AM,60,,True
+713,Winter Break,,,12/22/2024 12:00:00 AM,60,,True
+714,Winter Break,,,12/23/2024 12:00:00 AM,60,,True
+715,Winter Break,,,12/24/2024 12:00:00 AM,60,,True
+716,Winter Break,,,12/25/2024 12:00:00 AM,60,,True
+717,Winter Break,,,12/26/2024 12:00:00 AM,60,,True
+718,Winter Break,,,12/27/2024 12:00:00 AM,60,,True
+719,Winter Break,,,12/28/2024 12:00:00 AM,60,,True
+720,Winter Break,,,12/29/2024 12:00:00 AM,60,,True
+721,Winter Break,,,12/30/2024 12:00:00 AM,60,,True
+722,Winter Break,,,12/31/2024 12:00:00 AM,60,,True
+723,Winter Break,,,1/1/2025 12:00:00 AM,60,,True
+724,Martin Luther King Jr. Day,,,1/20/2025 12:00:00 AM,60,,True
+725,Ash Wednesday,,,3/5/2025 12:00:00 AM,60,,True
+726,Spring Break,,,3/15/2025 12:00:00 AM,60,,True
+727,Spring Break,,,3/16/2025 12:00:00 AM,60,,True
+729,Spring Break,,,3/17/2025 12:00:00 AM,60,,True
+728,St. Patrick&#39;s Day,,,3/17/2025 12:00:00 AM,60,,True
+730,Spring Break,,,3/18/2025 12:00:00 AM,60,,True
+731,Spring Break,,,3/19/2025 12:00:00 AM,60,,True
+732,Spring Break,,,3/20/2025 12:00:00 AM,60,,True
+733,Spring Break,,,3/21/2025 12:00:00 AM,60,,True
+734,Spring Break,,,3/22/2025 12:00:00 AM,60,,True
+735,Easter Sunday,,,4/20/2025 12:00:00 AM,60,,True
+751,Exam Week,,,5/8/2025 12:00:00 AM,60,,True
+736,Exam Week,,,5/9/2025 12:00:00 AM,60,,True
+737,Exam Week,,,5/10/2025 12:00:00 AM,60,,True
+738,Exam Week,,,5/11/2025 12:00:00 AM,60,,True
+739,Exam Week,,,5/12/2025 12:00:00 AM,60,,True
+740,Exam Week,,,5/13/2025 12:00:00 AM,60,,True
+741,Exam Week,,,5/14/2025 12:00:00 AM,60,,True
+742,Commencement,,,5/15/2025 12:00:00 AM,60,,True
+743,Commencement,,,5/16/2025 12:00:00 AM,60,,True
+744,Commencement,,,5/17/2025 12:00:00 AM,60,,True
+752,Memorial Day,,,5/26/2025 12:00:00 AM,60,,True
+753,Juneteenth,,,6/19/2025 12:00:00 AM,60,,True
+754,Independence Day,,,7/4/2025 12:00:00 AM,60,,True

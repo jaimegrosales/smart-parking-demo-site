@@ -1,0 +1,14 @@
+nohup: ignoring input
+Reading .csv
+Starting Training
+/home/suskojr/Downloads/myenv/lib/python3.12/site-packages/numpy/ma/core.py:2846: RuntimeWarning: invalid value encountered in cast
+  _data = np.array(data, dtype=dtype, copy=copy,
+Finished Training
+Model saved
+	Best Parameters: {'algorithm': 'ball_tree', 'metric': 'manhattan', 'n_jobs': -1, 'n_neighbors': 26, 'weights': 'uniform'}
+	RMSE: 31.9727
+	MAE: 7.7437
+	MAPE: 24.63%
+	r2: 0.9901
+	adjusted r2: 0.9901
+	ev: 0.9901

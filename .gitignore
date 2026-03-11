@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.venv/
+
+# Flutter/Dart
+**/.dart_tool/
+**/build/
+**/coverage/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/pubspec.lock
+
+# Local/editor/temp
+.vscode/
+.idea/
+.DS_Store
+*.log
+*.tmp
+
+# Project-specific generated/temp
+smart_parking/.tmp.driveupload/
+smart_parking/deploy/
+smart_parking/gh-pages-ready/
+smart_parking/build - Copy/
+smart_parking/flutter/
+# Exclude oversized datasets that exceed GitHub file limits
+esnemble_model/esnemble_model/SY_WITH_WKNDS-NO-EVENTS_FUTURE_cyclic_1-model-small.csv
+esnemble_model/esnemble_model/TEST_24-ONLYsummer_data.csv
+esnemble_model/esnemble_model/TO-19AUG2025_events_data.csv
+esnemble_model/esnemble_model/TEST_01MAY2025-TO-06NOV2025_cyclic_1-model-small.csv

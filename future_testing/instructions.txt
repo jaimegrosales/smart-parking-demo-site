@@ -1,0 +1,7 @@
+To future test
+1. Drop timestamp
+2. Drop current availability
+3. Test All 
+4. Save predicted results with timestamp and create dataframe so graph can be created
+5. Figure out if there is way to keep timestamp with for graphing purposes and drop for predicting purposes
+6. Refer back to where how to graph is written down

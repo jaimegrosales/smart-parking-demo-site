@@ -1,0 +1,2 @@
+# Grab from old LSTM code to see what feature list looks like and see if it leads to improvements (have old scores)
+# run with and without event data to see if any changes in model performance comapared to one David made
