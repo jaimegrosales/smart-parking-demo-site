@@ -10,9 +10,7 @@
 // Import the needed package
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:smart_parking/homepage/login_page.dart';
 import 'package:smart_parking/homepage/account_page.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -37,8 +35,9 @@ class _SignupState extends State<Signup> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromRGBO(0, 0, 0, 1),
+      backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
+      extendBody: true,
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text(
@@ -52,75 +51,75 @@ class _SignupState extends State<Signup> {
         shadowColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
       ),
-      // Bottom navigation for users who already have an account.
-      bottomNavigationBar: _signin(context),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.bottomLeft,
-            end: Alignment.topRight,
-            colors: [
-              Color.fromRGBO(0, 0, 0, 1),
-              Color.fromRGBO(69, 0, 132, 1),
-            ],
+      body: SizedBox.expand(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomLeft,
+              end: Alignment.topRight,
+              colors: [
+                Color.fromRGBO(0, 0, 0, 1),
+                Color.fromRGBO(69, 0, 132, 1),
+              ],
+            ),
           ),
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              left: -120,
-              bottom: -140,
-              child: _meshOrb(
-                size: 320,
-                colors: const [
-                  Color.fromRGBO(0, 0, 0, 0.75),
-                  Color.fromRGBO(32, 0, 64, 0.15),
-                ],
-              ),
-            ),
-            Positioned(
-              right: -90,
-              top: -120,
-              child: _meshOrb(
-                size: 340,
-                colors: const [
-                  Color.fromRGBO(90, 28, 148, 0.6),
-                  Color.fromRGBO(69, 0, 132, 0.0),
-                ],
-              ),
-            ),
-            Positioned(
-              left: 40,
-              top: 180,
-              child: _meshOrb(
-                size: 220,
-                colors: const [
-                  Color.fromRGBO(120, 56, 178, 0.28),
-                  Color.fromRGBO(69, 0, 132, 0.0),
-                ],
-              ),
-            ),
-            SafeArea(
-              child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.fromLTRB(16, kToolbarHeight + 24, 16, 16),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 40),
-                    _usernameField(),
-                    const SizedBox(height: 20),
-                    _emailField(),
-                    const SizedBox(height: 20),
-                    _passwordField(),
-                    const SizedBox(height: 10),
-                    _passwordRequirements(),
-                    const SizedBox(height: 40),
-                    _signupButton(context),
+          child: Stack(
+            children: [
+              Positioned(
+                left: -120,
+                bottom: -140,
+                child: _meshOrb(
+                  size: 320,
+                  colors: const [
+                    Color.fromRGBO(0, 0, 0, 0.75),
+                    Color.fromRGBO(32, 0, 64, 0.15),
                   ],
                 ),
               ),
-            ),
-          ],
+              Positioned(
+                right: -90,
+                top: -120,
+                child: _meshOrb(
+                  size: 340,
+                  colors: const [
+                    Color.fromRGBO(90, 28, 148, 0.6),
+                    Color.fromRGBO(69, 0, 132, 0.0),
+                  ],
+                ),
+              ),
+              Positioned(
+                left: 40,
+                top: 180,
+                child: _meshOrb(
+                  size: 220,
+                  colors: const [
+                    Color.fromRGBO(120, 56, 178, 0.28),
+                    Color.fromRGBO(69, 0, 132, 0.0),
+                  ],
+                ),
+              ),
+              SafeArea(
+                child: SingleChildScrollView(
+                  padding:
+                      const EdgeInsets.fromLTRB(16, kToolbarHeight + 24, 16, 16),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 40),
+                      _usernameField(),
+                      const SizedBox(height: 20),
+                      _emailField(),
+                      const SizedBox(height: 20),
+                      _passwordField(),
+                      const SizedBox(height: 10),
+                      _passwordRequirements(),
+                      const SizedBox(height: 40),
+                      _signupButton(context),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -144,9 +143,9 @@ class _SignupState extends State<Signup> {
       children: [
         const Text(
           'Username',
-          style: TextStyle(color: Color.fromRGBO(0, 0, 0, 1)),
+          style: TextStyle(color: Color.fromRGBO(255, 255, 255, 1)),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 6),
         TextField(
           controller: _usernameController,
           decoration: InputDecoration(
@@ -174,9 +173,9 @@ class _SignupState extends State<Signup> {
       children: [
         const Text(
           'Email Address',
-          style: TextStyle(color: Color.fromRGBO(0, 0, 0, 1)),
+          style: TextStyle(color: Color.fromRGBO(255, 255, 255, 1)),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 6),
         TextField(
           controller: _emailController,
           decoration: InputDecoration(
@@ -203,9 +202,9 @@ class _SignupState extends State<Signup> {
       children: [
         const Text(
           'Password',
-          style: TextStyle(color: Color.fromRGBO(0, 0, 0, 1)),
+          style: TextStyle(color: Color.fromRGBO(255, 255, 255, 1)),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 6),
         TextField(
           controller: _passwordController,
           obscureText: _isObscured,
@@ -381,40 +380,4 @@ class _SignupState extends State<Signup> {
     );
   }
 
-  // Bottom navigation with a RichText to allow navigation to the Login page.
-  Widget _signin(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: RichText(
-        textAlign: TextAlign.center,
-        text: TextSpan(
-          children: [
-            const TextSpan(
-              text: "Already have an account? ",
-              style: TextStyle(
-                color: Color.fromRGBO(0, 0, 0, 1),
-                fontWeight: FontWeight.normal,
-                fontSize: 16,
-              ),
-            ),
-            TextSpan(
-              text: "Log In",
-              style: const TextStyle(
-                color: Color.fromRGBO(69, 0, 132, 1),
-                fontWeight: FontWeight.normal,
-                fontSize: 16,
-              ),
-              recognizer: TapGestureRecognizer()
-                ..onTap = () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => Login()),
-                  );
-                },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
