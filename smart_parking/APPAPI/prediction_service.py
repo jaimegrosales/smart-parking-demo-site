@@ -195,17 +195,35 @@ class ParkingPredictionService:
         raise ValueError(f"Unknown garage name: '{garage_name}'")
     
     def _event_flags(self, arrival_time: datetime) -> dict:
-        """Populate event flags from CSV if columns exist, otherwise zeros."""
+        """Populate event flags from the exact step-5 mergeable event calendar."""
         flags = {event: 0 for event in self.event_columns}
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        csv_path = os.path.join(project_root, 'event_pulling', 'special_event_mergable2.csv')
+
+        bundle_dir = self._resolve_bundle_dir()
+        csv_path = os.path.join(bundle_dir, 'special_events-to-18MAR2026-mergeable.csv')
+        if not os.path.isfile(csv_path):
+            raise FileNotFoundError(
+                "Required event calendar file not found: "
+                f"{csv_path}. No fallback calendar is allowed."
+            )
+
         events_df = pd.read_csv(csv_path)
-        arrival_date_str = arrival_time.strftime('%m/%d/%Y')
-        event_row = events_df[events_df['Date'] == arrival_date_str]
+
+        if 'Date' not in events_df.columns:
+            raise ValueError("Event calendar is missing required 'Date' column.")
+
+        missing_event_cols = [c for c in self.event_columns if c not in events_df.columns]
+        if missing_event_cols:
+            raise ValueError(
+                "Event calendar is missing required event columns: "
+                f"{missing_event_cols}"
+            )
+
+        events_df['Date'] = pd.to_datetime(events_df['Date'], errors='raise').dt.normalize()
+        target_date = pd.to_datetime(arrival_time).normalize()
+        event_row = events_df[events_df['Date'] == target_date]
         if not event_row.empty:
             for event in self.event_columns:
-                if event in event_row.columns:
-                    flags[event] = int(event_row.iloc[0][event])
+                flags[event] = int(event_row.iloc[0][event])
         return flags
 
     def _get_campus_phase_code(self, ts: pd.Timestamp) -> int:
