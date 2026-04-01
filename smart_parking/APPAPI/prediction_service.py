@@ -314,9 +314,13 @@ class ParkingPredictionService:
         try:
             predicted_spaces = self._predict_with_real_models(features, model_type)
             confidence = self._calculate_confidence(features, model_type)
+            zone_capacity = features['zone_capacity']
+            if zone_capacity <= 0:
+                raise ValueError(f"Invalid zone capacity for zone {features['Zone']}: {zone_capacity}")
+
             return {
                 'predicted_spaces': predicted_spaces,
-                'availability_percentage': min(100, max(0, (predicted_spaces / 100) * 100)),
+                'availability_percentage': min(100, max(0, (predicted_spaces / zone_capacity) * 100)),
                 'confidence': confidence,
                 'model_used': model_type,
                 'zone_id': features['Zone'],
@@ -361,21 +365,26 @@ class ParkingPredictionService:
             # Apply stat lookup per routed model and drop event cols where applicable
             if model_type == 'events':
                 df = self._apply_lookup(base_df, self.events_lookup)
-                prediction = float(self.events_model.predict(df.drop(columns=['Timestamp'], errors='ignore'))[0])
-                print(f"Used Events LGBM: {prediction:.1f} spaces")
+                occupancy_rate = float(self.events_model.predict(df.drop(columns=['Timestamp'], errors='ignore'))[0])
+                print(f"Used Events LGBM occupancy: {occupancy_rate:.4f}")
             elif model_type == 'summer':
                 df = base_df.drop(columns=self.event_columns, errors='ignore')
                 df = self._apply_lookup(df, self.summer_lookup)
-                prediction = float(self.summer_model.predict(df.drop(columns=['Timestamp'], errors='ignore'))[0])
-                print(f"Used Summer LGBM: {prediction:.1f} spaces")
+                occupancy_rate = float(self.summer_model.predict(df.drop(columns=['Timestamp'], errors='ignore'))[0])
+                print(f"Used Summer LGBM occupancy: {occupancy_rate:.4f}")
             else:  # school
                 df = base_df.drop(columns=self.event_columns, errors='ignore')
                 df = self._apply_lookup(df, self.school_lookup)
-                prediction = float(self.school_model.predict(df.drop(columns=['Timestamp'], errors='ignore'))[0])
-                print(f"Used School LGBM: {prediction:.1f} spaces")
+                occupancy_rate = float(self.school_model.predict(df.drop(columns=['Timestamp'], errors='ignore'))[0])
+                print(f"Used School LGBM occupancy: {occupancy_rate:.4f}")
 
-            prediction = max(0, int(round(prediction)))
-            return prediction
+            occupancy_rate = min(1.0, max(0.0, occupancy_rate))
+            zone_capacity = features['zone_capacity']
+            if zone_capacity <= 0:
+                raise ValueError(f"Invalid zone capacity for zone {features['Zone']}: {zone_capacity}")
+
+            predicted_spaces = zone_capacity * (1.0 - occupancy_rate)
+            return max(0, int(round(predicted_spaces)))
 
         except Exception as e:
             print(f"Error in model prediction: {e}")
