@@ -1,8 +1,10 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS, cross_origin
 from datetime import datetime
+from pathlib import Path
 import threading
 import time
+import os
 import requests
 import xml.etree.ElementTree as ET
 from prediction_service import predict_parking_availability
@@ -10,6 +12,35 @@ from prediction_service import predict_parking_availability
 app = Flask(__name__)
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
+
+
+def _get_repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _model_artifact_status() -> dict:
+    model_dir = _get_repo_root() / 'final_ensemble' / 'final_ensemble'
+    required_files = [
+        'best_events_lgbm_production.pkl',
+        'best_summer_lgbm_production.pkl',
+        'best_schoolyear_lgbm_production.pkl',
+        'events_stat_lookup_production.pkl',
+        'summer_stat_lookup_production.pkl',
+        'schoolyear_stat_lookup_production.pkl',
+    ]
+    artifacts = {}
+    for name in required_files:
+        file_path = model_dir / name
+        artifacts[name] = {
+            'exists': file_path.exists(),
+            'size_bytes': file_path.stat().st_size if file_path.exists() else None,
+        }
+    return {
+        'model_dir': str(model_dir),
+        'artifacts': artifacts,
+        'all_present': all(item['exists'] for item in artifacts.values()),
+    }
+
 # Parking Decks
 decks = [
     #Chesapeake Parking Zones
@@ -229,6 +260,21 @@ def home():
 @cross_origin()
 def health():
     return jsonify({"status": "ok"})
+
+
+@app.route('/version', methods=['GET'])
+@cross_origin()
+def version():
+    return jsonify({
+        'status': 'ok',
+        'deploy': {
+            'render_service_name': os.getenv('RENDER_SERVICE_NAME'),
+            'render_git_commit': os.getenv('RENDER_GIT_COMMIT'),
+            'render_git_branch': os.getenv('RENDER_GIT_BRANCH'),
+            'render_instance_id': os.getenv('RENDER_INSTANCE_ID'),
+        },
+        'models': _model_artifact_status(),
+    })
 
 if __name__ == '__main__':
     app.run(debug=True)
