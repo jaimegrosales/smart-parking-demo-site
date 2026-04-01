@@ -59,22 +59,18 @@ class ParkingPredictionService:
         self.school_lookup = None
 
     def _resolve_bundle_dir(self) -> str:
-        """Resolve model bundle directory, preferring final_ensemble artifacts."""
+        """Resolve model bundle directory for the active production model set."""
         current_dir = os.path.dirname(os.path.abspath(__file__))
         smart_parking_root = os.path.dirname(current_dir)
         repo_root = os.path.dirname(smart_parking_root)
 
-        candidates = [
-            os.path.join(repo_root, 'final_ensemble', 'final_ensemble'),
-            os.path.join(repo_root, 'esnemble_model', 'esnemble_model'),
-        ]
-
-        for candidate in candidates:
-            if os.path.isdir(candidate):
-                return candidate
+        bundle_dir = os.path.join(repo_root, 'final_ensemble', 'final_ensemble')
+        if os.path.isdir(bundle_dir):
+            return bundle_dir
 
         raise FileNotFoundError(
-            f"No model bundle directory found. Checked: {candidates}"
+            "Required model bundle directory not found: "
+            f"{bundle_dir}. Old model bundles are disabled."
         )
 
     def _normalize_lookup(self, lookup_obj):
