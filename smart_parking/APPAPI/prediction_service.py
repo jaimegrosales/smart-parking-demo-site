@@ -527,8 +527,11 @@ class ParkingPredictionService:
         target_cap = self._zone_capacity_for(target_zone)
         if target_deck is None or target_type is None:
             raise ValueError(f"Missing deck/type metadata for target zone: {target_zone}")
+
+        # Match step-5 behavior: if no distance map exists for this deck,
+        # return the base prediction unchanged.
         if target_deck not in self.deck_distances:
-            raise ValueError(f"Missing distance matrix for target deck: {target_deck}")
+            return max(0, min(target_cap, int(round(base_predictions[target_zone]))))
 
         pressure = 0.0
         for zone, available in base_predictions.items():
