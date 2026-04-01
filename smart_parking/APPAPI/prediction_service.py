@@ -84,13 +84,6 @@ class ParkingPredictionService:
             if isinstance(first, pd.DataFrame):
                 return first
 
-        # Dict-based lookups are converted to a DataFrame when possible.
-        if isinstance(lookup_obj, dict):
-            try:
-                return pd.DataFrame(lookup_obj)
-            except Exception:
-                pass
-
         raise TypeError(
             f"Unsupported lookup artifact type: {type(lookup_obj).__name__}"
         )
@@ -104,7 +97,7 @@ class ParkingPredictionService:
             zone_type (str): Type of parking zone ('commuter', 'accessible', 'electric', 'faculty')
             
         Returns:
-            int: Zone ID, or default commuter zone if not found
+            int: Zone ID
         """
         # Try exact match first
         for garage_key, zones in self.garage_zones.items():
@@ -112,27 +105,24 @@ class ParkingPredictionService:
                 zone_id = zones.get(zone_type)
                 if zone_id is not None:
                     return zone_id
-                # Fallback to commuter if requested type not available
-                return zones.get('commuter', 22)  # Default to Ballard commuter
-        
-        # Default fallback
-        return 22  # Ballard commuter zone as default
+                raise ValueError(
+                    f"Zone type '{zone_type}' is not available for garage '{garage_name}'"
+                )
+
+        raise ValueError(f"Unknown garage name: '{garage_name}'")
     
     def _event_flags(self, arrival_time: datetime) -> dict:
         """Populate event flags from CSV if columns exist, otherwise zeros."""
         flags = {event: 0 for event in self.event_columns}
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         csv_path = os.path.join(project_root, 'event_pulling', 'special_event_mergable2.csv')
-        try:
-            events_df = pd.read_csv(csv_path)
-            arrival_date_str = arrival_time.strftime('%m/%d/%Y')
-            event_row = events_df[events_df['Date'] == arrival_date_str]
-            if not event_row.empty:
-                for event in self.event_columns:
-                    if event in event_row.columns:
-                        flags[event] = int(event_row.iloc[0][event])
-        except Exception as e:
-            print(f"Error reading events CSV: {e}")
+        events_df = pd.read_csv(csv_path)
+        arrival_date_str = arrival_time.strftime('%m/%d/%Y')
+        event_row = events_df[events_df['Date'] == arrival_date_str]
+        if not event_row.empty:
+            for event in self.event_columns:
+                if event in event_row.columns:
+                    flags[event] = int(event_row.iloc[0][event])
         return flags
 
     def extract_features_from_arrival_time(self, arrival_time, garage_name, zone_type='commuter'):
@@ -179,40 +169,36 @@ class ParkingPredictionService:
         """Load LightGBM models and stat lookup tables from the new bundle."""
         if self.models_loaded:
             return True
-            
-        try:
-            bundle_dir = self._resolve_bundle_dir()
 
-            events_model_path = os.path.join(bundle_dir, 'best_events_lgbm_production.pkl')
-            summer_model_path = os.path.join(bundle_dir, 'best_summer_lgbm_production.pkl')
-            school_model_path = os.path.join(bundle_dir, 'best_schoolyear_lgbm_production.pkl')
+        bundle_dir = self._resolve_bundle_dir()
 
-            events_lookup_path = os.path.join(bundle_dir, 'events_stat_lookup_production.pkl')
-            summer_lookup_path = os.path.join(bundle_dir, 'summer_stat_lookup_production.pkl')
-            school_lookup_path = os.path.join(bundle_dir, 'schoolyear_stat_lookup_production.pkl')
+        events_model_path = os.path.join(bundle_dir, 'best_events_lgbm_production.pkl')
+        summer_model_path = os.path.join(bundle_dir, 'best_summer_lgbm_production.pkl')
+        school_model_path = os.path.join(bundle_dir, 'best_schoolyear_lgbm_production.pkl')
 
-            print("Loading models and lookups from:")
-            print(f"  Events model:  {events_model_path}")
-            print(f"  Summer model:  {summer_model_path}")
-            print(f"  School model:  {school_model_path}")
-            print(f"  Events lookup: {events_lookup_path}")
-            print(f"  Summer lookup: {summer_lookup_path}")
-            print(f"  School lookup: {school_lookup_path}")
+        events_lookup_path = os.path.join(bundle_dir, 'events_stat_lookup_production.pkl')
+        summer_lookup_path = os.path.join(bundle_dir, 'summer_stat_lookup_production.pkl')
+        school_lookup_path = os.path.join(bundle_dir, 'schoolyear_stat_lookup_production.pkl')
 
-            self.events_model = joblib.load(events_model_path)
-            self.summer_model = joblib.load(summer_model_path)
-            self.school_model = joblib.load(school_model_path)
+        print("Loading models and lookups from:")
+        print(f"  Events model:  {events_model_path}")
+        print(f"  Summer model:  {summer_model_path}")
+        print(f"  School model:  {school_model_path}")
+        print(f"  Events lookup: {events_lookup_path}")
+        print(f"  Summer lookup: {summer_lookup_path}")
+        print(f"  School lookup: {school_lookup_path}")
 
-            self.events_lookup = self._normalize_lookup(joblib.load(events_lookup_path))
-            self.summer_lookup = self._normalize_lookup(joblib.load(summer_lookup_path))
-            self.school_lookup = self._normalize_lookup(joblib.load(school_lookup_path))
+        self.events_model = joblib.load(events_model_path)
+        self.summer_model = joblib.load(summer_model_path)
+        self.school_model = joblib.load(school_model_path)
 
-            print("All LightGBM models and lookup tables loaded successfully!")
-            self.models_loaded = True
-            return True
-        except Exception as e:
-            print(f"Error loading models: {e}")
-            return False
+        self.events_lookup = self._normalize_lookup(joblib.load(events_lookup_path))
+        self.summer_lookup = self._normalize_lookup(joblib.load(summer_lookup_path))
+        self.school_lookup = self._normalize_lookup(joblib.load(school_lookup_path))
+
+        print("All LightGBM models and lookup tables loaded successfully!")
+        self.models_loaded = True
+        return True
     
     def classify_time_period(self, features):
         """Classify whether prediction should use events, summer, or school-year model."""
@@ -235,13 +221,7 @@ class ParkingPredictionService:
             dict: Prediction results including availability estimate and confidence
         """
         # Load models if needed
-        if not self.load_models():
-            return {
-                'error': 'Models not available',
-                'availability': None,
-                'confidence': 0,
-                'model_used': None
-            }
+        self.load_models()
         
         # Extract features
         features = self.extract_features_from_arrival_time(arrival_time, garage_name, zone_type)
@@ -269,8 +249,11 @@ class ParkingPredictionService:
     
     def _apply_lookup(self, df: pd.DataFrame, lookup: pd.DataFrame) -> pd.DataFrame:
         df = df.merge(lookup, on=['Zone', 'hour', 'Day of Week'], how='left')
-        df['hist_mean'] = df['hist_mean'].fillna(df['hist_mean'].median())
-        df['hist_std'] = df['hist_std'].fillna(0)
+        if df['hist_mean'].isna().any() or df['hist_std'].isna().any():
+            raise ValueError(
+                "Lookup merge produced missing hist_mean/hist_std values; "
+                "no fallback fill is allowed."
+            )
         return df
 
     def _predict_with_real_models(self, features, model_type):
