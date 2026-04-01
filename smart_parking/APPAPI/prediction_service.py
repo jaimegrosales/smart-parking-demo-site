@@ -286,8 +286,45 @@ class ParkingPredictionService:
 
         # Event flags
         features.update(event_flags)
+        features['is_event'] = 1 if any(event_flags.get(event, 0) for event in self.event_columns) else 0
 
         return features
+
+    def _align_model_input(self, df: pd.DataFrame, model) -> pd.DataFrame:
+        """Rename and reorder columns to exactly match LightGBM training feature names."""
+        rename_map = {
+            'Day of Week': 'Day_of_Week',
+            'Ash Wednesday': 'Ash_Wednesday',
+            'Easter Sunday': 'Easter_Sunday',
+            'Exam Week': 'Exam_Week',
+            'Fall Break': 'Fall_Break',
+            'Family Weekend': 'Family_Weekend',
+            'Home Football Game': 'Home_Football_Game',
+            'Home Football Game (Homecoming)': 'Home_Football_Game_(Homecoming)',
+            'Labor Day': 'Labor_Day',
+            'Martin Luther King Jr. Day': 'Martin_Luther_King_Jr._Day',
+            'Spring Break': 'Spring_Break',
+            "St. Patrick&#39;s Day": "St._Patrick&#39;s_Day",
+            'Thanksgiving Break': 'Thanksgiving_Break',
+            'Winter Break': 'Winter_Break',
+        }
+        aligned = df.rename(columns=rename_map)
+
+        expected = getattr(model, 'feature_name_', None)
+        if expected is None:
+            expected = getattr(model, 'feature_names_in_', None)
+        if expected is None:
+            raise ValueError("Model does not expose expected feature names.")
+
+        missing = [col for col in expected if col not in aligned.columns]
+        if missing:
+            raise ValueError(f"Model input is missing required features: {missing}")
+
+        extra = [col for col in aligned.columns if col not in expected]
+        if extra:
+            raise ValueError(f"Model input contains unexpected features: {extra}")
+
+        return aligned[list(expected)]
     
     def load_models(self):
         """Load LightGBM models and stat lookup tables from the new bundle."""
@@ -408,17 +445,29 @@ class ParkingPredictionService:
             # Apply stat lookup per routed model and drop event cols where applicable
             if model_type == 'events':
                 df = self._apply_lookup(base_df, self.events_lookup)
-                occupancy_rate = float(self.events_model.predict(df.drop(columns=['Timestamp'], errors='ignore'))[0])
+                model_input = self._align_model_input(
+                    df.drop(columns=['Timestamp'], errors='ignore'),
+                    self.events_model,
+                )
+                occupancy_rate = float(self.events_model.predict(model_input)[0])
                 print(f"Used Events LGBM occupancy: {occupancy_rate:.4f}")
             elif model_type == 'summer':
-                df = base_df.drop(columns=self.event_columns, errors='ignore')
+                df = base_df.drop(columns=self.event_columns + ['is_event'], errors='ignore')
                 df = self._apply_lookup(df, self.summer_lookup)
-                occupancy_rate = float(self.summer_model.predict(df.drop(columns=['Timestamp'], errors='ignore'))[0])
+                model_input = self._align_model_input(
+                    df.drop(columns=['Timestamp'], errors='ignore'),
+                    self.summer_model,
+                )
+                occupancy_rate = float(self.summer_model.predict(model_input)[0])
                 print(f"Used Summer LGBM occupancy: {occupancy_rate:.4f}")
             else:  # school
-                df = base_df.drop(columns=self.event_columns, errors='ignore')
+                df = base_df.drop(columns=self.event_columns + ['is_event'], errors='ignore')
                 df = self._apply_lookup(df, self.school_lookup)
-                occupancy_rate = float(self.school_model.predict(df.drop(columns=['Timestamp'], errors='ignore'))[0])
+                model_input = self._align_model_input(
+                    df.drop(columns=['Timestamp'], errors='ignore'),
+                    self.school_model,
+                )
+                occupancy_rate = float(self.school_model.predict(model_input)[0])
                 print(f"Used School LGBM occupancy: {occupancy_rate:.4f}")
 
             occupancy_rate = min(1.0, max(0.0, occupancy_rate))
