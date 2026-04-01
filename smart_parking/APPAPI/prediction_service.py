@@ -64,6 +64,17 @@ class ParkingPredictionService:
             28: 'Mason', 39: 'Warsaw',
             27: 'Ballard', 40: 'Champions', 6: 'Grace', 12: 'Mason', 2: 'Warsaw'
         }
+        self.deck_distances = {
+            'Ballard': {'Champions': 1.3, 'Chesapeake': 2.3, 'Grace': 2.1, 'Warsaw': 2.4},
+            'Champions': {'Ballard': 1.3, 'Chesapeake': 1.6, 'Grace': 1.6, 'Warsaw': 1.3},
+            'Chesapeake': {'Ballard': 2.3, 'Champions': 1.6, 'Grace': 1.7, 'Warsaw': 0.6},
+            'Grace': {'Ballard': 2.1, 'Champions': 1.6, 'Chesapeake': 1.7, 'Warsaw': 0.6},
+            'Warsaw': {'Ballard': 2.4, 'Champions': 1.3, 'Chesapeake': 0.6, 'Grace': 0.6},
+        }
+        self.summer_periods = [
+            ('2024-05-12', '2024-08-20'),
+            ('2025-05-15', '2025-08-19'),
+        ]
         self.phase_codes = {
             'summer': 0,
             'move_in': 1,
@@ -104,7 +115,7 @@ class ParkingPredictionService:
             ('2025-12-06', '2025-12-12', 'exam_week'),
             ('2025-12-13', '2026-01-11', 'winter_break'),
             ('2026-01-12', '2026-01-23', 'first_two_weeks'),
-            ('2026-01-24', '2026-02-24', 'regular_session'),
+            ('2026-01-24', '2026-05-14', 'regular_session'),
         ]
         
         # Event calendar flags (expanded to align with new LGBM models)
@@ -204,6 +215,12 @@ class ParkingPredictionService:
                 return self.phase_codes[phase_label]
         return self.phase_codes['unknown']
 
+    def _is_summer_date(self, ts: pd.Timestamp) -> bool:
+        for start_str, end_str in self.summer_periods:
+            if pd.Timestamp(start_str) <= ts <= pd.Timestamp(end_str) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1):
+                return True
+        return False
+
     def extract_features_from_arrival_time(self, arrival_time, garage_name, zone_type='commuter'):
         """
         Extract ML features from arrival time and garage information.
@@ -211,6 +228,11 @@ class ParkingPredictionService:
         """
         ts = pd.to_datetime(arrival_time)
         zone_id = self.get_zone_for_garage(garage_name, zone_type)
+        event_flags = self._event_flags(ts)
+        return self._extract_features_for_zone(ts, zone_id, event_flags)
+
+    def _extract_features_for_zone(self, ts: pd.Timestamp, zone_id: int, event_flags: dict):
+        """Build the exact feature schema expected by production sub-models."""
 
         # Base time/zone features
         total_minutes = ts.hour * 60 + ts.minute
@@ -245,7 +267,7 @@ class ParkingPredictionService:
         features['campus_phase'] = self._get_campus_phase_code(ts)
 
         # Event flags
-        features.update(self._event_flags(ts))
+        features.update(event_flags)
 
         return features
     
@@ -284,11 +306,11 @@ class ParkingPredictionService:
         self.models_loaded = True
         return True
     
-    def classify_time_period(self, features):
+    def classify_time_period(self, ts: pd.Timestamp, event_flags: dict):
         """Classify whether prediction should use events, summer, or school-year model."""
-        if any(features.get(event, 0) for event in self.event_columns):
+        if any(event_flags.get(event, 0) for event in self.event_columns):
             return 'events'
-        if features['month'] in [5, 6, 7]:  # summer excludes August
+        if self._is_summer_date(ts):
             return 'summer'
         return 'school'
     
@@ -307,12 +329,15 @@ class ParkingPredictionService:
         # Load models if needed
         self.load_models()
         
-        # Extract features
-        features = self.extract_features_from_arrival_time(arrival_time, garage_name, zone_type)
-        model_type = self.classify_time_period(features)
+        ts = pd.to_datetime(arrival_time)
+        target_zone = self.get_zone_for_garage(garage_name, zone_type)
+        event_flags = self._event_flags(ts)
+        model_type = self.classify_time_period(ts, event_flags)
 
         try:
-            predicted_spaces = self._predict_with_real_models(features, model_type)
+            base_predictions = self._predict_zone_group(ts, target_zone, model_type, event_flags)
+            predicted_spaces = self._apply_spatial_adjustment(target_zone, base_predictions)
+            features = self._extract_features_for_zone(ts, target_zone, event_flags)
             confidence = self._calculate_confidence(features, model_type)
             zone_capacity = features['zone_capacity']
             if zone_capacity <= 0:
@@ -331,8 +356,8 @@ class ParkingPredictionService:
                 'error': True,
                 'message': f'Real ML model prediction failed: {str(e)}',
                 'model_type': model_type,
-                'zone_id': features['Zone'],
-                'features': features
+                'zone_id': target_zone,
+                'features': self._extract_features_for_zone(ts, target_zone, event_flags)
             }
     
     def _apply_lookup(self, df: pd.DataFrame, lookup_pair: Tuple[pd.DataFrame, pd.DataFrame]) -> pd.DataFrame:
@@ -391,6 +416,71 @@ class ParkingPredictionService:
             print(f"Features: {features}")
             print(f"Model type: {model_type}")
             raise RuntimeError(f"ML model prediction failed: {e}")
+
+    def _predict_zone_group(self, ts: pd.Timestamp, target_zone: int, model_type: str, event_flags: dict) -> dict:
+        """Predict base available spaces for all zones sharing the target permit type."""
+        target_type = self.zone_types.get(target_zone)
+        if target_type is None:
+            raise ValueError(f"Unsupported target zone for spatial prediction: {target_zone}")
+
+        relevant_zones = [zone for zone, ztype in self.zone_types.items() if ztype == target_type]
+        if not relevant_zones:
+            raise ValueError(f"No relevant zones found for permit type: {target_type}")
+
+        predictions = {}
+        for zone in relevant_zones:
+            features = self._extract_features_for_zone(ts, zone, event_flags)
+            predictions[zone] = self._predict_with_real_models(features, model_type)
+        return predictions
+
+    def _apply_spatial_adjustment(self, target_zone: int, base_predictions: dict, alpha: float = 0.05,
+                                  power: int = 2, congestion_threshold: float = 0.90) -> int:
+        """Apply the step-5 gravity adjustment to the target zone prediction."""
+        if target_zone not in base_predictions:
+            raise ValueError(f"Missing base prediction for target zone: {target_zone}")
+
+        target_deck = self.zone_decks.get(target_zone)
+        target_type = self.zone_types.get(target_zone)
+        target_cap = self._zone_capacity_for(target_zone)
+        if target_deck is None or target_type is None:
+            raise ValueError(f"Missing deck/type metadata for target zone: {target_zone}")
+        if target_deck not in self.deck_distances:
+            raise ValueError(f"Missing distance matrix for target deck: {target_deck}")
+
+        pressure = 0.0
+        for zone, available in base_predictions.items():
+            if zone == target_zone:
+                continue
+            zone_type = self.zone_types.get(zone)
+            if zone_type != target_type:
+                continue
+
+            other_deck = self.zone_decks.get(zone)
+            other_cap = self._zone_capacity_for(zone)
+            if other_deck is None:
+                raise ValueError(f"Missing deck metadata for zone: {zone}")
+            if other_deck not in self.deck_distances[target_deck]:
+                continue
+
+            distance = self.deck_distances[target_deck][other_deck]
+            fullness = 1.0 - max(0.0, min(1.0, available / other_cap))
+            if fullness > congestion_threshold:
+                pressure += fullness / (distance ** power)
+
+        adjusted = base_predictions[target_zone] - (pressure * target_cap * alpha)
+        return max(0, min(target_cap, int(round(adjusted))))
+
+    def _zone_capacity_for(self, zone_id: int) -> int:
+        zone_capacities = {
+            29: 31,   31: 8,    33: 13,   35: 12,   37: 17,   38: 17,
+            22: 1462, 13: 451,  19: 630,  4: 389,   3: 599,   42: 599,
+            30: 2,    32: 4,    34: 2,    36: 3,    28: 4,    39: 4,
+            27: 87,   40: 13,   6: 55,    12: 570,  2: 177
+        }
+        capacity = zone_capacities.get(zone_id)
+        if capacity is None or capacity <= 0:
+            raise ValueError(f"Invalid or missing capacity for zone: {zone_id}")
+        return capacity
     
     def _handle_prediction_failure(self, error_message, features, model_type):
         """Handle ML model prediction failures by returning error info."""
