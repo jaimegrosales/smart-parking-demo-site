@@ -39,6 +39,73 @@ class ParkingPredictionService:
                 'accessible': 37, 'commuter': None, 'electric': 28, 'faculty': 12
             }
         }
+
+        self.zone_type_codes = {
+            'Commuter': 0, 'Faculty': 1, 'Accessible': 2, 'EV': 3
+        }
+        self.deck_codes = {
+            'Ballard': 0, 'Champions': 1, 'Chesapeake': 2,
+            'Grace': 3, 'Mason': 4, 'Warsaw': 5
+        }
+        self.zone_types = {
+            29: 'Accessible', 31: 'Accessible', 33: 'Accessible',
+            35: 'Accessible', 37: 'Accessible', 38: 'Accessible',
+            22: 'Commuter', 13: 'Commuter', 19: 'Commuter',
+            4: 'Commuter', 3: 'Commuter', 42: 'Commuter',
+            30: 'EV', 32: 'EV', 34: 'EV', 36: 'EV', 28: 'EV', 39: 'EV',
+            27: 'Faculty', 40: 'Faculty', 6: 'Faculty', 12: 'Faculty', 2: 'Faculty'
+        }
+        self.zone_decks = {
+            29: 'Ballard', 31: 'Champions', 33: 'Chesapeake', 35: 'Grace',
+            37: 'Mason', 38: 'Warsaw',
+            22: 'Ballard', 13: 'Champions', 19: 'Chesapeake', 4: 'Grace',
+            3: 'Warsaw', 42: 'Warsaw',
+            30: 'Ballard', 32: 'Champions', 34: 'Chesapeake', 36: 'Grace',
+            28: 'Mason', 39: 'Warsaw',
+            27: 'Ballard', 40: 'Champions', 6: 'Grace', 12: 'Mason', 2: 'Warsaw'
+        }
+        self.phase_codes = {
+            'summer': 0,
+            'move_in': 1,
+            'first_two_weeks': 2,
+            'regular_session': 3,
+            'fall_break': 4,
+            'thanksgiving_break': 5,
+            'exam_week': 6,
+            'winter_break': 7,
+            'spring_break': 8,
+            'unknown': 9,
+        }
+        self.campus_phases = [
+            ('2024-04-01', '2024-05-09', 'regular_session'),
+            ('2024-05-12', '2024-08-20', 'summer'),
+            ('2024-08-21', '2024-08-25', 'move_in'),
+            ('2024-08-26', '2024-09-06', 'first_two_weeks'),
+            ('2024-09-07', '2024-10-15', 'regular_session'),
+            ('2024-10-16', '2024-10-20', 'fall_break'),
+            ('2024-10-21', '2024-11-24', 'regular_session'),
+            ('2024-11-25', '2024-11-30', 'thanksgiving_break'),
+            ('2024-12-01', '2024-12-08', 'regular_session'),
+            ('2024-12-09', '2024-12-13', 'exam_week'),
+            ('2024-12-14', '2025-01-12', 'winter_break'),
+            ('2025-01-13', '2025-01-24', 'first_two_weeks'),
+            ('2025-01-25', '2025-03-14', 'regular_session'),
+            ('2025-03-15', '2025-03-22', 'spring_break'),
+            ('2025-03-23', '2025-05-07', 'regular_session'),
+            ('2025-05-08', '2025-05-14', 'exam_week'),
+            ('2025-05-15', '2025-08-19', 'summer'),
+            ('2025-08-20', '2025-08-24', 'move_in'),
+            ('2025-08-25', '2025-09-05', 'first_two_weeks'),
+            ('2025-09-06', '2025-10-14', 'regular_session'),
+            ('2025-10-15', '2025-10-19', 'fall_break'),
+            ('2025-10-20', '2025-11-23', 'regular_session'),
+            ('2025-11-24', '2025-11-29', 'thanksgiving_break'),
+            ('2025-11-30', '2025-12-05', 'regular_session'),
+            ('2025-12-06', '2025-12-12', 'exam_week'),
+            ('2025-12-13', '2026-01-11', 'winter_break'),
+            ('2026-01-12', '2026-01-23', 'first_two_weeks'),
+            ('2026-01-24', '2026-02-24', 'regular_session'),
+        ]
         
         # Event calendar flags (expanded to align with new LGBM models)
         self.event_columns = [
@@ -74,15 +141,20 @@ class ParkingPredictionService:
         )
 
     def _normalize_lookup(self, lookup_obj):
-        """Normalize lookup artifact to a DataFrame expected by merge logic."""
+        """Normalize lookup artifact to (zone-hour-dow, zone-hour) DataFrames."""
         if isinstance(lookup_obj, pd.DataFrame):
-            return lookup_obj
+            return lookup_obj, None
 
         # Some pipelines save (lookup, lookup_zh). Use the first item.
         if isinstance(lookup_obj, tuple) and lookup_obj:
             first = lookup_obj[0]
             if isinstance(first, pd.DataFrame):
-                return first
+                second = lookup_obj[1] if len(lookup_obj) > 1 else None
+                if second is not None and not isinstance(second, pd.DataFrame):
+                    raise TypeError(
+                        f"Unsupported secondary lookup type: {type(second).__name__}"
+                    )
+                return first, second
 
         raise TypeError(
             f"Unsupported lookup artifact type: {type(lookup_obj).__name__}"
@@ -125,6 +197,13 @@ class ParkingPredictionService:
                     flags[event] = int(event_row.iloc[0][event])
         return flags
 
+    def _get_campus_phase_code(self, ts: pd.Timestamp) -> int:
+        date_only = ts.normalize()
+        for start_str, end_str, phase_label in self.campus_phases:
+            if pd.Timestamp(start_str) <= date_only <= pd.Timestamp(end_str):
+                return self.phase_codes[phase_label]
+        return self.phase_codes['unknown']
+
     def extract_features_from_arrival_time(self, arrival_time, garage_name, zone_type='commuter'):
         """
         Extract ML features from arrival time and garage information.
@@ -159,6 +238,11 @@ class ParkingPredictionService:
             27: 87,   40: 13,   6:  55,   12: 570,  2:  177
         }
         features['zone_capacity'] = zone_capacities.get(zone_id, 0)
+        features['zone_type'] = self.zone_type_codes.get(self.zone_types.get(zone_id, ''), -1)
+        features['deck'] = self.deck_codes.get(self.zone_decks.get(zone_id, ''), -1)
+        features['is_peak'] = 1 if 10 <= ts.hour <= 15 else 0
+        features['hours_since_8am'] = max(0, ts.hour - 8)
+        features['campus_phase'] = self._get_campus_phase_code(ts)
 
         # Event flags
         features.update(self._event_flags(ts))
@@ -247,11 +331,24 @@ class ParkingPredictionService:
                 'features': features
             }
     
-    def _apply_lookup(self, df: pd.DataFrame, lookup: pd.DataFrame) -> pd.DataFrame:
+    def _apply_lookup(self, df: pd.DataFrame, lookup_pair: Tuple[pd.DataFrame, pd.DataFrame]) -> pd.DataFrame:
+        lookup, lookup_zh = lookup_pair
         df = df.merge(lookup, on=['Zone', 'hour', 'Day of Week'], how='left')
-        if df['hist_mean'].isna().any() or df['hist_std'].isna().any():
+
+        if lookup_zh is not None:
+            df = df.merge(lookup_zh, on=['Zone', 'hour'], how='left')
+
+        required_cols = ['hist_mean', 'hist_std']
+        if lookup_zh is not None:
+            required_cols.extend(['hist_mean_zh', 'hist_std_zh'])
+
+        missing_required = [col for col in required_cols if col not in df.columns]
+        if missing_required:
+            raise ValueError(f"Lookup merge missing required columns: {missing_required}")
+
+        if any(df[col].isna().any() for col in required_cols):
             raise ValueError(
-                "Lookup merge produced missing hist_mean/hist_std values; "
+                "Lookup merge produced missing historical feature values; "
                 "no fallback fill is allowed."
             )
         return df
