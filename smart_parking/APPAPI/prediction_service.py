@@ -57,6 +57,47 @@ class ParkingPredictionService:
         self.events_lookup = None
         self.summer_lookup = None
         self.school_lookup = None
+
+    def _resolve_bundle_dir(self) -> str:
+        """Resolve model bundle directory, preferring final_ensemble artifacts."""
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        smart_parking_root = os.path.dirname(current_dir)
+        repo_root = os.path.dirname(smart_parking_root)
+
+        candidates = [
+            os.path.join(repo_root, 'final_ensemble', 'final_ensemble'),
+            os.path.join(repo_root, 'esnemble_model', 'esnemble_model'),
+        ]
+
+        for candidate in candidates:
+            if os.path.isdir(candidate):
+                return candidate
+
+        raise FileNotFoundError(
+            f"No model bundle directory found. Checked: {candidates}"
+        )
+
+    def _normalize_lookup(self, lookup_obj):
+        """Normalize lookup artifact to a DataFrame expected by merge logic."""
+        if isinstance(lookup_obj, pd.DataFrame):
+            return lookup_obj
+
+        # Some pipelines save (lookup, lookup_zh). Use the first item.
+        if isinstance(lookup_obj, tuple) and lookup_obj:
+            first = lookup_obj[0]
+            if isinstance(first, pd.DataFrame):
+                return first
+
+        # Dict-based lookups are converted to a DataFrame when possible.
+        if isinstance(lookup_obj, dict):
+            try:
+                return pd.DataFrame(lookup_obj)
+            except Exception:
+                pass
+
+        raise TypeError(
+            f"Unsupported lookup artifact type: {type(lookup_obj).__name__}"
+        )
     
     def get_zone_for_garage(self, garage_name, zone_type='commuter'):
         """
@@ -144,9 +185,7 @@ class ParkingPredictionService:
             return True
             
         try:
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root = os.path.dirname(os.path.dirname(current_dir))
-            bundle_dir = os.path.join(project_root, 'esnemble_model', 'esnemble_model')
+            bundle_dir = self._resolve_bundle_dir()
 
             events_model_path = os.path.join(bundle_dir, 'best_events_lgbm_production.pkl')
             summer_model_path = os.path.join(bundle_dir, 'best_summer_lgbm_production.pkl')
@@ -168,9 +207,9 @@ class ParkingPredictionService:
             self.summer_model = joblib.load(summer_model_path)
             self.school_model = joblib.load(school_model_path)
 
-            self.events_lookup = joblib.load(events_lookup_path)
-            self.summer_lookup = joblib.load(summer_lookup_path)
-            self.school_lookup = joblib.load(school_lookup_path)
+            self.events_lookup = self._normalize_lookup(joblib.load(events_lookup_path))
+            self.summer_lookup = self._normalize_lookup(joblib.load(summer_lookup_path))
+            self.school_lookup = self._normalize_lookup(joblib.load(school_lookup_path))
 
             print("All LightGBM models and lookup tables loaded successfully!")
             self.models_loaded = True
