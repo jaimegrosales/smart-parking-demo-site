@@ -133,6 +133,15 @@ class _PredicterPageState extends State<PredicterPage> {
       return;
     }
 
+    if (_selectedGarage == 'Mason Parking Deck' && _selectedZoneType == 'commuter') {
+      setState(() {
+        _predictionMessage =
+            'Mason Parking Deck does not support commuter predictions. '
+            'Please choose faculty, accessible, or electric.';
+      });
+      return;
+    }
+
     setState(() {
       _calculating = true;
       _predictionMessage = 'Calculating route and arrival time...';

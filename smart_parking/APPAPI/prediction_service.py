@@ -193,6 +193,13 @@ class ParkingPredictionService:
                 )
 
         raise ValueError(f"Unknown garage name: '{garage_name}'")
+
+    def get_available_zone_types_for_garage(self, garage_name):
+        """Return supported zone types for a garage based on configured zone IDs."""
+        for garage_key, zones in self.garage_zones.items():
+            if garage_key.lower() in garage_name.lower() or garage_name.lower() in garage_key.lower():
+                return [zone for zone, zone_id in zones.items() if zone_id is not None]
+        return []
     
     def _event_flags(self, arrival_time: datetime) -> dict:
         """Populate event flags from the exact step-5 mergeable event calendar."""
@@ -381,15 +388,15 @@ class ParkingPredictionService:
         Returns:
             dict: Prediction results including availability estimate and confidence
         """
-        # Load models if needed
-        self.load_models()
-        
-        ts = pd.to_datetime(arrival_time)
-        target_zone = self.get_zone_for_garage(garage_name, zone_type)
-        event_flags = self._event_flags(ts)
-        model_type = self.classify_time_period(ts, event_flags)
-
         try:
+            # Load models if needed
+            self.load_models()
+
+            ts = pd.to_datetime(arrival_time)
+            target_zone = self.get_zone_for_garage(garage_name, zone_type)
+            event_flags = self._event_flags(ts)
+            model_type = self.classify_time_period(ts, event_flags)
+
             base_predictions = self._predict_zone_group(ts, target_zone, model_type, event_flags)
             predicted_spaces = self._apply_spatial_adjustment(target_zone, base_predictions)
             features = self._extract_features_for_zone(ts, target_zone, event_flags)
@@ -406,13 +413,22 @@ class ParkingPredictionService:
                 'zone_id': features['Zone'],
                 'features': features
             }
+        except ValueError as e:
+            return {
+                'error': True,
+                'error_type': 'validation',
+                'message': str(e),
+                'garage_name': garage_name,
+                'zone_type': zone_type,
+                'available_zone_types': self.get_available_zone_types_for_garage(garage_name),
+            }
         except Exception as e:
             return {
                 'error': True,
+                'error_type': 'runtime',
                 'message': f'Real ML model prediction failed: {str(e)}',
-                'model_type': model_type,
-                'zone_id': target_zone,
-                'features': self._extract_features_for_zone(ts, target_zone, event_flags)
+                'garage_name': garage_name,
+                'zone_type': zone_type,
             }
     
     def _apply_lookup(self, df: pd.DataFrame, lookup_pair: Tuple[pd.DataFrame, pd.DataFrame]) -> pd.DataFrame:

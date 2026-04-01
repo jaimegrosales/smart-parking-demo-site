@@ -45,7 +45,16 @@ class PredictionService {
         }
       } else {
         print('Prediction API error: ${response.statusCode} - ${response.body}');
-        return null;
+        String message = 'Prediction request failed (${response.statusCode}).';
+        try {
+          final errorData = jsonDecode(response.body);
+          if (errorData is Map<String, dynamic> && errorData['message'] != null) {
+            message = errorData['message'].toString();
+          }
+        } catch (_) {
+          // Keep generic message if response is not JSON.
+        }
+        throw Exception(message);
       }
       
     } catch (e) {

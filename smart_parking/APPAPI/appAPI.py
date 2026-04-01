@@ -225,6 +225,8 @@ def predict_parking():
         prediction = predict_parking_availability(arrival_datetime, garage_name, zone_type)
         
         if 'error' in prediction:
+            if prediction.get('error_type') == 'validation':
+                return jsonify(prediction), 400
             return jsonify(prediction), 500
         
         # Format response
