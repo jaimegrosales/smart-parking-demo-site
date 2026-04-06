@@ -15,9 +15,11 @@ class PredicterPage extends StatefulWidget {
 
 class _PredicterPageState extends State<PredicterPage> {
   String _predictionMessage = 'Prediction results will appear here.';
+  String _predictionMode = 'route';
   String? _selectedAddress;
   String? _selectedGarage;
   String _selectedZoneType = 'commuter';
+  DateTime? _manualArrivalTime;
   List<String> _savedAddresses = [];
   bool _loading = true;
   bool _calculating = false;
@@ -25,6 +27,8 @@ class _PredicterPageState extends State<PredicterPage> {
   final MappingService _mappingService = MappingService();
   final PredictionService _predictionService = PredictionService();
   final TextEditingController _addressController = TextEditingController();
+
+  bool get _isRouteMode => _predictionMode == 'route';
 
   // JMU parking garages
   final List<String> _jmuGarages = [
@@ -74,6 +78,41 @@ class _PredicterPageState extends State<PredicterPage> {
     return double.tryParse(match.group(0)!);
   }
 
+  String _formatDateTimeForDisplay(DateTime value) {
+    const List<String> weekdayNames = [
+      'Mon',
+      'Tue',
+      'Wed',
+      'Thu',
+      'Fri',
+      'Sat',
+      'Sun',
+    ];
+    const List<String> monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    final weekday = weekdayNames[value.weekday - 1];
+    final month = monthNames[value.month - 1];
+    final day = value.day.toString().padLeft(2, '0');
+    final year = value.year.toString();
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+
+    return '$weekday, $month $day, $year at $hour:$minute';
+  }
+
   Color _predictionRiskColor({int? estimatedSpaces, double? availabilityPercent}) {
     // Prefer absolute space count when available; otherwise use percent fallback.
     if (estimatedSpaces != null) {
@@ -119,9 +158,16 @@ class _PredicterPageState extends State<PredicterPage> {
 
   Future<void> _calculatePrediction() async {
     // Validate inputs
-    if (_selectedAddress == null || _selectedAddress!.trim().isEmpty) {
+    if (_isRouteMode && (_selectedAddress == null || _selectedAddress!.trim().isEmpty)) {
       setState(() {
         _predictionMessage = 'Please enter a starting location.';
+      });
+      return;
+    }
+
+    if (!_isRouteMode && _manualArrivalTime == null) {
+      setState(() {
+        _predictionMessage = 'Please choose an arrival date and time.';
       });
       return;
     }
@@ -144,42 +190,44 @@ class _PredicterPageState extends State<PredicterPage> {
 
     setState(() {
       _calculating = true;
-      _predictionMessage = 'Calculating route and arrival time...';
+      _predictionMessage = _isRouteMode
+          ? 'Calculating route and arrival time...'
+          : 'Calculating prediction for selected time...';
     });
 
     try {
-      // Get garage address - either from predefined list or use input directly
-      String garageAddress =
-          _mappingService.getGarageAddress(_selectedGarage!) ??
-              _selectedGarage!;
+      if (_isRouteMode) {
+        // Get garage address - either from predefined list or use input directly
+        String garageAddress =
+            _mappingService.getGarageAddress(_selectedGarage!) ??
+                _selectedGarage!;
 
-      print('Starting calculation...');
-      print('From: $_selectedAddress');
-      print('To: $garageAddress');
+        print('Starting calculation...');
+        print('From: $_selectedAddress');
+        print('To: $garageAddress');
 
-      // Get route information
-      final routeInfo =
-          await _mappingService.getRouteInfo(_selectedAddress!, garageAddress);
+        // Get route information
+        final routeInfo =
+            await _mappingService.getRouteInfo(_selectedAddress!, garageAddress);
 
-      if (routeInfo != null) {
-        final travelMinutes = routeInfo['duration_minutes'];
-        final distanceKm = routeInfo['distance_km'];
-        final arrivalTime = _mappingService.calculateArrivalTime(travelMinutes);
-        final formattedArrivalTime =
-            _mappingService.formatArrivalTime(arrivalTime);
+        if (routeInfo != null) {
+          final travelMinutes = routeInfo['duration_minutes'];
+          final distanceKm = routeInfo['distance_km'];
+          final arrivalTime = _mappingService.calculateArrivalTime(travelMinutes);
+          final formattedArrivalTime = _formatDateTimeForDisplay(arrivalTime);
 
-        // Now get parking prediction for the arrival time
-        print('Getting prediction for arrival time: $arrivalTime');
-        final prediction = await _predictionService.getPrediction(
-          arrivalTime: arrivalTime,
-          garageName: _selectedGarage!,
-          zoneType: _selectedZoneType,
-        );
+          // Now get parking prediction for the arrival time
+          print('Getting prediction for arrival time: $arrivalTime');
+          final prediction = await _predictionService.getPrediction(
+            arrivalTime: arrivalTime,
+            garageName: _selectedGarage!,
+            zoneType: _selectedZoneType,
+          );
 
-        setState(() {
-          if (prediction != null) {
-            // Success - show route info and prediction
-            _predictionMessage = '''
+          setState(() {
+            if (prediction != null) {
+              // Success - show route info and prediction
+              _predictionMessage = '''
 Route Information:
 From: $_selectedAddress
 To: $_selectedGarage
@@ -189,9 +237,9 @@ Distance: $distanceKm km
 ESTIMATED ARRIVAL: $formattedArrivalTime
 
 ${_predictionService.formatPredictionMessage(prediction)}''';
-          } else {
-            // Route worked but prediction failed
-            _predictionMessage = '''
+            } else {
+              // Route worked but prediction failed
+              _predictionMessage = '''
 Route Information:
 From: $_selectedAddress
 To: $_selectedGarage
@@ -206,11 +254,11 @@ The prediction service is not responding. Please ensure the Flask API is running
 To start the prediction service:
 1. Navigate to smart_parking/APPAPI/
 2. Run: python appAPI.py''';
-          }
-        });
-      } else {
-        setState(() {
-          _predictionMessage = '''Unable to calculate route.
+            }
+          });
+        } else {
+          setState(() {
+            _predictionMessage = '''Unable to calculate route.
 
 Debug Info:
 From: $_selectedAddress
@@ -226,11 +274,42 @@ Check the console/logs for more detailed error information.
 
 Try using full addresses like:
 "123 Main St, Harrisonburg, VA"''';
+          });
+        }
+      } else {
+        final arrivalTime = _manualArrivalTime!;
+        final formattedArrivalTime = _formatDateTimeForDisplay(arrivalTime);
+
+        final prediction = await _predictionService.getPrediction(
+          arrivalTime: arrivalTime,
+          garageName: _selectedGarage!,
+          zoneType: _selectedZoneType,
+        );
+
+        setState(() {
+          if (prediction != null) {
+            _predictionMessage = '''
+Prediction Mode: Specific Time
+Garage: $_selectedGarage
+
+ESTIMATED ARRIVAL: $formattedArrivalTime
+
+${_predictionService.formatPredictionMessage(prediction)}''';
+          } else {
+            _predictionMessage = '''
+Prediction Mode: Specific Time
+Garage: $_selectedGarage
+
+ESTIMATED ARRIVAL: $formattedArrivalTime
+
+PARKING PREDICTION: Currently unavailable
+The prediction service is not responding. Please try again.''';
+          }
         });
       }
     } catch (e) {
       setState(() {
-        _predictionMessage = 'Error calculating route: $e';
+        _predictionMessage = 'Error calculating prediction: $e';
       });
     } finally {
       setState(() {
@@ -434,6 +513,8 @@ Try using full addresses like:
         _selectedAddress = null;
         _selectedGarage = null;
         _selectedZoneType = 'commuter';
+        _predictionMode = 'route';
+        _manualArrivalTime = null;
         _addressController.text = '';
         _loading = false;
       });
@@ -473,10 +554,11 @@ Try using full addresses like:
                   builder: (context) => AlertDialog(
                     title: const Text('Instructions'),
                     content: const Text('The Predicter page allows you to get real-time parking availability predictions for JMU parking garages based on your estimated arrival time.\n\n'
-                        '1. Enter your starting location in the top input field. You can type an address or select from your saved addresses.\n'
-                        '2. Select a JMU parking garage from the dropdown menu.\n'
-                        '3. Choose the type of parking space you are looking for (commuter, faculty, accessible, electric).\n'
-                        '4. Click the "Calculate" button to get your route information and parking prediction.\n\n'
+                      '1. Choose a prediction mode: "Based on Location" or "Specific Time."\n'
+                      '2. If using "Based on Location," enter your starting location. You can type an address or select from your saved addresses.\n'
+                      '3. If using "Specific Time," select the date and time you want to predict for.\n'
+                      '4. Select a JMU parking garage and the type of parking space you are looking for (commuter, faculty, accessible, electric).\n'
+                      '5. Click the "Calculate" button to get your parking prediction.\n\n'
                         'Make sure you have an active internet connection and that the prediction service is running for the best experience.'),
                     actions: [
                       TextButton(
@@ -521,39 +603,6 @@ Try using full addresses like:
         ),
         child: Stack(
           children: [
-            Positioned(
-              left: -120,
-              bottom: -140,
-              child: _meshOrb(
-                size: 320,
-                colors: const [
-                  Color.fromRGBO(0, 0, 0, 0.75),
-                  Color.fromRGBO(32, 0, 64, 0.15),
-                ],
-              ),
-            ),
-            Positioned(
-              right: -90,
-              top: -120,
-              child: _meshOrb(
-                size: 340,
-                colors: const [
-                  Color.fromRGBO(90, 28, 148, 0.6),
-                  Color.fromRGBO(69, 0, 132, 0.0),
-                ],
-              ),
-            ),
-            Positioned(
-              left: 40,
-              top: 180,
-              child: _meshOrb(
-                size: 220,
-                colors: const [
-                  Color.fromRGBO(120, 56, 178, 0.28),
-                  Color.fromRGBO(69, 0, 132, 0.0),
-                ],
-              ),
-            ),
             Positioned.fill(
               child: Padding(
                 padding: EdgeInsets.only(
@@ -568,240 +617,433 @@ Try using full addresses like:
                         child: SizedBox(
                           width: containerWidth,
                           height: double.infinity,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Input bars take 2/3 of the width
-                          Expanded(
-                            flex: 2,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: Autocomplete<String>(
-                                  optionsBuilder:
-                                      (TextEditingValue textEditingValue) {
-                                    if (_savedAddresses.isEmpty) {
-                                      return const Iterable<String>.empty();
-                                    }
-                                    return _savedAddresses
-                                        .where((String option) {
-                                      return option.toLowerCase().contains(
-                                          textEditingValue.text.toLowerCase());
-                                    });
-                                  },
-                                  displayStringForOption: (option) => option,
-                                  onSelected: (String selection) {
-                                    setState(() {
-                                      _selectedAddress = selection;
-                                      _addressController.text = selection;
-                                    });
-                                  },
-                                  fieldViewBuilder: (context, controller,
-                                      focusNode, onEditingComplete) {
-                                    return TextField(
-                                      controller: controller,
-                                      focusNode: focusNode,
-                                      decoration: InputDecoration(
-                                        labelText: 'Starting Location',
-                                        labelStyle: const TextStyle(
-                                            color: Color.fromRGBO(
-                                                130, 130, 130, 1)),
-                                        filled: true,
-                                        fillColor: const Color.fromRGBO(
-                                            255, 255, 255, 1),
-                                        border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(14),
-                                        ),
-                                        hintText: _savedAddresses.isEmpty
-                                            ? 'No saved addresses'
-                                            : 'Type or select saved address',
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final bool isWide = constraints.maxWidth >= 980;
+
+                              final Widget inputCard = Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(18),
+                                decoration: BoxDecoration(
+                                  color: const Color.fromRGBO(247, 247, 249, 0.96),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color.fromRGBO(255, 255, 255, 0.55),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'How to Predict',
+                                      style: TextStyle(
+                                        color: Color.fromRGBO(35, 35, 35, 1),
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 18,
                                       ),
-                                      onChanged: (value) {
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Choose prediction mode, destination, and space type.',
+                                      style: TextStyle(
+                                        color: Color.fromRGBO(95, 95, 95, 1),
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    SegmentedButton<String>(
+                                      segments: const [
+                                        ButtonSegment<String>(
+                                          value: 'route',
+                                          label: Text('Based on Location'),
+                                          icon: Icon(Icons.route),
+                                        ),
+                                        ButtonSegment<String>(
+                                          value: 'time',
+                                          label: Text('Specific Time'),
+                                          icon: Icon(Icons.schedule),
+                                        ),
+                                      ],
+                                      selected: <String>{_predictionMode},
+                                      onSelectionChanged: (Set<String> selection) {
+                                        final mode = selection.first;
                                         setState(() {
-                                          _selectedAddress = value;
+                                          _predictionMode = mode;
                                         });
                                       },
-                                      onEditingComplete: onEditingComplete,
-                                    );
-                                  },
-                                  optionsViewBuilder:
-                                      (context, onSelected, options) {
-                                    final optionList = options.toList();
-                                    if (_savedAddresses.isEmpty) {
-                                      return Material(
-                                        child: ListTile(
-                                          title:
-                                              const Text('No saved addresses'),
+                                      style: ButtonStyle(
+                                        foregroundColor: WidgetStateProperty.resolveWith<Color?>(
+                                          (states) => const Color.fromRGBO(45, 45, 45, 1),
                                         ),
-                                      );
-                                    }
-                                    return Material(
-                                      child: ConstrainedBox(
-                                        constraints: BoxConstraints(
-                                          maxHeight: _menuHeightForCount(
-                                              optionList.length,
-                                              rowHeight: 56),
+                                        backgroundColor: WidgetStateProperty.resolveWith<Color?>(
+                                          (states) => states.contains(WidgetState.selected)
+                                              ? const Color.fromRGBO(203, 182, 119, 0.75)
+                                              : const Color.fromRGBO(255, 255, 255, 1),
                                         ),
-                                        child: ListView.builder(
-                                          padding: EdgeInsets.zero,
-                                          shrinkWrap: true,
-                                          itemCount: optionList.length,
-                                          itemBuilder: (context, index) {
-                                            final option = optionList[index];
-                                            return ListTile(
-                                              title: Text(option),
-                                              onTap: () => onSelected(option),
+                                        side: const WidgetStatePropertyAll(
+                                          BorderSide(color: Color.fromRGBO(180, 180, 180, 1)),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 18),
+                                    if (_isRouteMode) ...[
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: Autocomplete<String>(
+                                          optionsBuilder: (TextEditingValue textEditingValue) {
+                                            if (_savedAddresses.isEmpty) {
+                                              return const Iterable<String>.empty();
+                                            }
+                                            return _savedAddresses.where((String option) {
+                                              return option.toLowerCase().contains(
+                                                    textEditingValue.text.toLowerCase(),
+                                                  );
+                                            });
+                                          },
+                                          displayStringForOption: (option) => option,
+                                          onSelected: (String selection) {
+                                            setState(() {
+                                              _selectedAddress = selection;
+                                              _addressController.text = selection;
+                                            });
+                                          },
+                                          fieldViewBuilder: (
+                                            context,
+                                            controller,
+                                            focusNode,
+                                            onEditingComplete,
+                                          ) {
+                                            return TextField(
+                                              controller: controller,
+                                              focusNode: focusNode,
+                                              decoration: InputDecoration(
+                                                labelText: 'Starting Location',
+                                                labelStyle: const TextStyle(
+                                                  color: Color.fromRGBO(130, 130, 130, 1),
+                                                ),
+                                                filled: true,
+                                                fillColor: const Color.fromRGBO(255, 255, 255, 1),
+                                                border: OutlineInputBorder(
+                                                  borderRadius: BorderRadius.circular(14),
+                                                ),
+                                                hintText: _savedAddresses.isEmpty
+                                                    ? 'No saved addresses'
+                                                    : 'Type or select saved address',
+                                              ),
+                                              onChanged: (value) {
+                                                setState(() {
+                                                  _selectedAddress = value;
+                                                });
+                                              },
+                                              onEditingComplete: onEditingComplete,
+                                            );
+                                          },
+                                          optionsViewBuilder: (context, onSelected, options) {
+                                            final optionList = options.toList();
+                                            if (_savedAddresses.isEmpty) {
+                                              return const Material(
+                                                child: ListTile(
+                                                  title: Text('No saved addresses'),
+                                                ),
+                                              );
+                                            }
+                                            return Material(
+                                              child: ConstrainedBox(
+                                                constraints: BoxConstraints(
+                                                  maxHeight: _menuHeightForCount(
+                                                    optionList.length,
+                                                    rowHeight: 56,
+                                                  ),
+                                                ),
+                                                child: ListView.builder(
+                                                  padding: EdgeInsets.zero,
+                                                  shrinkWrap: true,
+                                                  itemCount: optionList.length,
+                                                  itemBuilder: (context, index) {
+                                                    final option = optionList[index];
+                                                    return ListTile(
+                                                      title: Text(option),
+                                                      onTap: () => onSelected(option),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
                                             );
                                           },
                                         ),
                                       ),
-                                    );
-                                  },
-                                ),
-                                ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: const Color.fromRGBO(
-                                              255, 255, 255, 1),
-                                          borderRadius: BorderRadius.circular(14),
-                                          border: Border.all(
-                                            color: const Color.fromRGBO(
-                                                180, 180, 180, 1),
+                                    ] else ...[
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: OutlinedButton.icon(
+                                          onPressed: () async {
+                                            final now = DateTime.now();
+                                            final initialDate = _manualArrivalTime ?? now;
+                                            final selectedDate = await showDatePicker(
+                                              context: context,
+                                              initialDate: initialDate,
+                                              firstDate: now.subtract(const Duration(days: 1)),
+                                              lastDate: now.add(const Duration(days: 365)),
+                                            );
+                                            if (selectedDate == null || !context.mounted) {
+                                              return;
+                                            }
+                                            final initialTime = TimeOfDay.fromDateTime(
+                                              _manualArrivalTime ?? now,
+                                            );
+                                            final selectedTime = await showTimePicker(
+                                              context: context,
+                                              initialTime: initialTime,
+                                            );
+                                            if (selectedTime == null) {
+                                              return;
+                                            }
+                                            setState(() {
+                                              _manualArrivalTime = DateTime(
+                                                selectedDate.year,
+                                                selectedDate.month,
+                                                selectedDate.day,
+                                                selectedTime.hour,
+                                                selectedTime.minute,
+                                              );
+                                            });
+                                          },
+                                          icon: const Icon(Icons.schedule),
+                                          label: Text(
+                                            _manualArrivalTime == null
+                                                ? 'Select Arrival Date & Time'
+                                                : 'Arrival: ${_formatDateTimeForDisplay(_manualArrivalTime!)}',
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            backgroundColor: const Color.fromRGBO(255, 255, 255, 1),
+                                            foregroundColor: const Color.fromRGBO(60, 60, 60, 1),
+                                            minimumSize: const Size.fromHeight(56),
+                                            side: const BorderSide(
+                                              color: Color.fromRGBO(180, 180, 180, 1),
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(14),
+                                            ),
                                           ),
                                         ),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              flex: 5,
-                                              child: LayoutBuilder(
-                                                builder: (context, constraints) {
-                                                  final menuWidth = constraints.maxWidth;
-                                                  return DropdownMenu<String>(
-                                                    initialSelection: _selectedGarage,
-                                                    hintText: 'Select a parking garage',
-                                                    width: menuWidth,
-                                                    menuHeight: _menuHeightForCount(_jmuGarages.length),
-                                                    menuStyle: MenuStyle(
-                                                      alignment: Alignment.bottomLeft,
-                                                      minimumSize: WidgetStatePropertyAll(Size(menuWidth, 0)),
-                                                      maximumSize: WidgetStatePropertyAll(Size(menuWidth, double.infinity)),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 16),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: const Color.fromRGBO(255, 255, 255, 1),
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(
+                                          color: const Color.fromRGBO(180, 180, 180, 1),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            flex: 5,
+                                            child: LayoutBuilder(
+                                              builder: (context, constraints) {
+                                                final menuWidth = constraints.maxWidth;
+                                                return DropdownMenu<String>(
+                                                  initialSelection: _selectedGarage,
+                                                  hintText: 'Select a parking garage',
+                                                  width: menuWidth,
+                                                  menuHeight: _menuHeightForCount(_jmuGarages.length),
+                                                  menuStyle: MenuStyle(
+                                                    alignment: Alignment.bottomLeft,
+                                                    minimumSize: WidgetStatePropertyAll(Size(menuWidth, 0)),
+                                                    maximumSize:
+                                                        WidgetStatePropertyAll(Size(menuWidth, double.infinity)),
+                                                  ),
+                                                  inputDecorationTheme: const InputDecorationTheme(
+                                                    border: InputBorder.none,
+                                                    contentPadding: EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 12,
                                                     ),
-                                                    inputDecorationTheme: const InputDecorationTheme(
-                                                      border: InputBorder.none,
-                                                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                                    ),
-                                                    dropdownMenuEntries: _jmuGarages
-                                                        .map((garage) => DropdownMenuEntry<String>(value: garage, label: garage))
-                                                        .toList(),
-                                                    onSelected: (String? newValue) {
-                                                      setState(() {
-                                                        _selectedGarage = newValue;
-                                                      });
-                                                    },
-                                                  );
-                                                },
-                                              ),
+                                                  ),
+                                                  dropdownMenuEntries: _jmuGarages
+                                                      .map(
+                                                        (garage) => DropdownMenuEntry<String>(
+                                                          value: garage,
+                                                          label: garage,
+                                                        ),
+                                                      )
+                                                      .toList(),
+                                                  onSelected: (String? newValue) {
+                                                    setState(() {
+                                                      _selectedGarage = newValue;
+                                                    });
+                                                  },
+                                                );
+                                              },
                                             ),
-                                            Container(
-                                              width: 1,
-                                              height: 28,
-                                              color: const Color.fromRGBO(210, 210, 210, 1),
-                                            ),
-                                            SizedBox(
+                                          ),
+                                          Container(
+                                            width: 1,
+                                            height: 28,
+                                            color: const Color.fromRGBO(210, 210, 210, 1),
+                                          ),
+                                          SizedBox(
+                                            width: 120,
+                                            child: DropdownMenu<String>(
+                                              initialSelection: _selectedZoneType,
                                               width: 120,
-                                              child: DropdownMenu<String>(
-                                                initialSelection: _selectedZoneType,
-                                                width: 120,
-                                                menuHeight: _menuHeightForCount(_spaceTypes.length),
-                                                menuStyle: const MenuStyle(
-                                                  alignment: Alignment.bottomLeft,
-                                                ),
-                                                inputDecorationTheme: const InputDecorationTheme(
-                                                  border: InputBorder.none,
-                                                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                                                ),
-                                                dropdownMenuEntries: _spaceTypes
-                                                    .map((spaceTypeOption) => DropdownMenuEntry<String>(
-                                                          value: spaceTypeOption['value']!,
-                                                          label: spaceTypeOption['label']!,
-                                                        ))
-                                                    .toList(),
-                                                onSelected: (String? newValue) {
-                                                  if (newValue == null) {
-                                                    return;
-                                                  }
-                                                  setState(() {
-                                                    _selectedZoneType = newValue;
-                                                  });
-                                                },
+                                              menuHeight: _menuHeightForCount(_spaceTypes.length),
+                                              menuStyle: const MenuStyle(
+                                                alignment: Alignment.bottomLeft,
                                               ),
+                                              inputDecorationTheme: const InputDecorationTheme(
+                                                border: InputBorder.none,
+                                                contentPadding: EdgeInsets.symmetric(
+                                                  horizontal: 10,
+                                                  vertical: 12,
+                                                ),
+                                              ),
+                                              dropdownMenuEntries: _spaceTypes
+                                                  .map(
+                                                    (spaceTypeOption) => DropdownMenuEntry<String>(
+                                                      value: spaceTypeOption['value']!,
+                                                      label: spaceTypeOption['label']!,
+                                                    ),
+                                                  )
+                                                  .toList(),
+                                              onSelected: (String? newValue) {
+                                                if (newValue == null) {
+                                                  return;
+                                                }
+                                                setState(() {
+                                                  _selectedZoneType = newValue;
+                                                });
+                                              },
                                             ),
-                                          ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 22),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color.fromRGBO(203, 182, 119, 0.9),
+                                          foregroundColor: const Color.fromRGBO(30, 30, 30, 1),
+                                          minimumSize: const Size.fromHeight(48),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          elevation: 0,
+                                        ),
+                                        onPressed: _calculating ? null : _calculatePrediction,
+                                        child: _calculating
+                                            ? const SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                                    Color.fromRGBO(30, 30, 30, 1),
+                                                  ),
+                                                ),
+                                              )
+                                            : const Text(
+                                                'Calculate Prediction',
+                                                style: TextStyle(fontWeight: FontWeight.w600),
+                                              ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              final Widget outputCard = Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color.fromRGBO(255, 255, 255, 0.97),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color.fromRGBO(255, 255, 255, 0.65),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Row(
+                                      children: [
+                                        Icon(
+                                          Icons.analytics_outlined,
+                                          size: 20,
+                                          color: Color.fromRGBO(69, 0, 132, 1),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Prediction Output',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 16,
+                                            color: Color.fromRGBO(35, 35, 35, 1),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Route details and parking likelihood appear here.',
+                                      style: TextStyle(
+                                        color: Color.fromRGBO(95, 95, 95, 1),
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Expanded(
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          color: const Color.fromRGBO(249, 249, 251, 1),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: const Color.fromRGBO(226, 226, 232, 1),
+                                          ),
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(12),
+                                          child: _buildPredictionDisplay(),
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 24),
-                                Center(
-                                  child: SizedBox(
-                                    width: 160, // Set a much smaller width
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color.fromRGBO(255, 255, 255, 0.14),
-                                        foregroundColor: const Color.fromRGBO(255, 255, 255, 1),
-                                      ),
-                                      onPressed: _calculating ? null : _calculatePrediction, // Disable when calculating
-                                      child: _calculating
-                                          ? const SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                              ),
-                                            )
-                                          : const Text('Calculate'),
-                                    ),
-                                  ),
+                              );
+
+                              return SingleChildScrollView(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  child: isWide
+                                      ? SizedBox(
+                                          height: mediaQuery.size.height - topPanelInset - bottomPanelInset - 16,
+                                          child: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                                            children: [
+                                              Expanded(flex: 2, child: inputCard),
+                                              const SizedBox(width: 24),
+                                              Expanded(flex: 1, child: outputCard),
+                                            ],
+                                          ),
+                                        )
+                                      : Column(
+                                          children: [
+                                            inputCard,
+                                            const SizedBox(height: 16),
+                                            SizedBox(
+                                              height: 360,
+                                              child: outputCard,
+                                            ),
+                                          ],
+                                        ),
                                 ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
-                          // Space between bars and box
-                          const SizedBox(width: 40),
-                          // Single box to the right, vertically aligned with top box in account page
-                          Expanded(
-                            flex: 1,
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color.fromRGBO(255, 255, 255, 1),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: const Color.fromRGBO(255, 255, 255, 1)),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Prediction Output', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 8),
-                                  Expanded(
-                                    child: _buildPredictionDisplay(),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                         ),
                       ),
               ),
@@ -812,14 +1054,4 @@ Try using full addresses like:
     );
   }
 
-  Widget _meshOrb({required double size, required List<Color> colors}) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(colors: colors),
-      ),
-    );
-  }
 }

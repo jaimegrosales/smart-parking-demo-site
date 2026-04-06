@@ -6,41 +6,21 @@
 
 // This page is accessed through the account tab once a user signs in or signs up
 
-// Import the needed packaged
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_places_flutter/google_places_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_places_flutter/google_places_flutter.dart';
 import '../widgets/appbar_datetime_center.dart';
 
-// Account page is stateful
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
 
   @override
-  _AccountPageState createState() => _AccountPageState();
+  State<AccountPage> createState() => _AccountPageState();
 }
 
-// Set strings for information that is pulled from the Firebase Cloud Storage
 class _AccountPageState extends State<AccountPage> {
-  Future<void> _deleteSavedAddress(String address) async {
-    final User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      List<String> updatedAddresses = List<String>.from(savedAddresses);
-      updatedAddresses.remove(address);
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update({
-        'savedAddresses': updatedAddresses,
-      });
-      setState(() {
-        savedAddresses = updatedAddresses;
-      });
-    }
-  }
-
   String? username;
   String? homeAddress;
   bool isLoading = true;
@@ -50,12 +30,34 @@ class _AccountPageState extends State<AccountPage> {
 
   // API key for Google Places Autocomplete
   final String googleApiKey =
-      "AIzaSyBFrTsiYcpETNVw4fnwXZHREUx8XvB91jQ"; // <-- Replace with your actual API Key
+      'AIzaSyBFrTsiYcpETNVw4fnwXZHREUx8XvB91jQ'; // <-- Replace with your actual API Key
 
   @override
   void initState() {
     super.initState();
     _getUserData();
+  }
+
+  @override
+  void dispose() {
+    _addressController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _deleteSavedAddress(String address) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final List<String> updatedAddresses = List<String>.from(savedAddresses)
+        ..remove(address);
+
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'savedAddresses': updatedAddresses,
+      });
+
+      setState(() {
+        savedAddresses = updatedAddresses;
+      });
+    }
   }
 
   // Grabs the needed data from the database
@@ -64,16 +66,13 @@ class _AccountPageState extends State<AccountPage> {
 
     if (user != null) {
       try {
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
+        final DocumentSnapshot userDoc =
+            await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
         if (userDoc.exists) {
           final data = userDoc.data() as Map<String, dynamic>;
           List<String> loadedAddresses = [];
-          if (data['savedAddresses'] != null &&
-              data['savedAddresses'] is List) {
+          if (data['savedAddresses'] != null && data['savedAddresses'] is List) {
             loadedAddresses = List<String>.from(data['savedAddresses']);
           }
           setState(() {
@@ -92,16 +91,20 @@ class _AccountPageState extends State<AccountPage> {
         setState(() {
           isLoading = false;
         });
-        print("Error fetching user data: $e");
+        print('Error fetching user data: $e');
       }
+    } else {
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
-// Updates the home address once the save address button is completed
+  // Updates the home address once the save address button is completed
   Future<void> _updateHomeAddress() async {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final address = _addressController.text.trim();
+      final String address = _addressController.text.trim();
 
       if (address.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -111,15 +114,11 @@ class _AccountPageState extends State<AccountPage> {
       }
 
       try {
-        // Add to savedAddresses if not already present
-        List<String> updatedAddresses = List<String>.from(savedAddresses);
+        final List<String> updatedAddresses = List<String>.from(savedAddresses);
         if (!updatedAddresses.contains(address)) {
           updatedAddresses.add(address);
         }
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .update({
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
           'homeAddress': address,
           'savedAddresses': updatedAddresses,
         });
@@ -140,7 +139,6 @@ class _AccountPageState extends State<AccountPage> {
     }
   }
 
-  // Actually building of the application
   @override
   Widget build(BuildContext context) {
     final User? user = FirebaseAuth.instance.currentUser;
@@ -151,7 +149,7 @@ class _AccountPageState extends State<AccountPage> {
     final double pageHorizontalPadding =
         (mediaQuery.size.width * 0.028).clamp(14.0, 34.0).toDouble();
     final double containerWidth =
-      (mediaQuery.size.width * 0.80).clamp(320.0, 1100.0).toDouble();
+        (mediaQuery.size.width * 0.80).clamp(320.0, 1100.0).toDouble();
 
     return Scaffold(
       backgroundColor: const Color.fromRGBO(0, 0, 0, 1),
@@ -174,7 +172,9 @@ class _AccountPageState extends State<AccountPage> {
                   context: context,
                   builder: (context) => AlertDialog(
                     title: const Text('Instructions'),
-                    content: const Text('This page allows you to manage your account settings, including updating your home address and viewing saved addresses.'),
+                    content: const Text(
+                      'This page allows you to manage your account settings, including updating your home address and viewing saved addresses.',
+                    ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.of(context).pop(),
@@ -200,7 +200,9 @@ class _AccountPageState extends State<AccountPage> {
             tooltip: 'Sign Out',
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
-              Navigator.pop(context);
+              if (context.mounted) {
+                Navigator.pop(context);
+              }
             },
           ),
         ],
@@ -220,39 +222,6 @@ class _AccountPageState extends State<AccountPage> {
         ),
         child: Stack(
           children: [
-            Positioned(
-              left: -120,
-              bottom: -140,
-              child: _meshOrb(
-                size: 320,
-                colors: const [
-                  Color.fromRGBO(0, 0, 0, 0.75),
-                  Color.fromRGBO(32, 0, 64, 0.15),
-                ],
-              ),
-            ),
-            Positioned(
-              right: -90,
-              top: -120,
-              child: _meshOrb(
-                size: 340,
-                colors: const [
-                  Color.fromRGBO(90, 28, 148, 0.6),
-                  Color.fromRGBO(69, 0, 132, 0.0),
-                ],
-              ),
-            ),
-            Positioned(
-              left: 40,
-              top: 180,
-              child: _meshOrb(
-                size: 220,
-                colors: const [
-                  Color.fromRGBO(120, 56, 178, 0.28),
-                  Color.fromRGBO(69, 0, 132, 0.0),
-                ],
-              ),
-            ),
             Positioned.fill(
               child: Padding(
                 padding: EdgeInsets.only(
@@ -264,158 +233,276 @@ class _AccountPageState extends State<AccountPage> {
                 child: Transform.translate(
                   offset: const Offset(0, panelVerticalOffset),
                   child: isLoading
-                      ? const Align(
-                          alignment: Alignment.topCenter,
-                          child: Text(
-                            'Please Login or Register for an account',
-                            style: TextStyle(fontSize: 18),
-                            textAlign: TextAlign.center,
-                          ),
-                        )
+                      ? const Center(child: CircularProgressIndicator())
                       : user != null
                           ? Center(
                               child: SizedBox(
                                 width: containerWidth,
                                 height: double.infinity,
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: const Color.fromRGBO(247, 247, 249, 1),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: Colors.grey.shade300),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                                const Text('Saved Addresses',
-                                                    style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold)),
-                                                const SizedBox(height: 8),
-                                                SizedBox(
-                                                  width: double.infinity,
-                                                  child:
-                                                      GooglePlaceAutoCompleteTextField(
-                                                    textEditingController:
-                                                        _addressController,
-                                                    googleAPIKey: googleApiKey,
-                                                    inputDecoration:
-                                                        InputDecoration(
-                                                      labelText:
-                                                          'Enter Address',
-                                                      labelStyle:
-                                                          const TextStyle(
-                                                              color: Colors
-                                                                  .black),
-                                                      filled: true,
-                                                      fillColor:
-                                                          const Color.fromRGBO(
-                                                              255,
-                                                              255,
-                                                              255,
-                                                              1),
-                                                      border:
-                                                          OutlineInputBorder(
-                                                        borderSide:
-                                                            BorderSide.none,
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(14),
-                                                      ),
-                                                      floatingLabelBehavior:
-                                                          FloatingLabelBehavior
-                                                              .never,
-                                                    ),
-                                                    debounceTime: 800,
-                                                    isLatLngRequired: false,
-                                                    itemClick: (prediction) {
-                                                      _addressController.text =
-                                                          prediction
-                                                              .description!;
-                                                    },
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Align(
-                                                  alignment:
-                                                      Alignment.centerLeft,
-                                                  child: SizedBox(
-                                                    width: 160,
-                                                    child: ElevatedButton(
-                                                      style: ElevatedButton
-                                                          .styleFrom(
-                                                        backgroundColor:
-                                                        const Color
-                                                          .fromRGBO(
-                                                          69,
-                                                          0,
-                                                          132,
-                                                          1),
-                                                        foregroundColor:
-                                                            const Color
-                                                                .fromRGBO(
-                                                                255,
-                                                                255,
-                                                                255,
-                                                                1),
-                                                      ),
-                                                      onPressed:
-                                                          _updateHomeAddress,
-                                                      child: const Text(
-                                                          'Save Address'),
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 8),
-                                        Expanded(
-                                          child: savedAddresses.isEmpty
-                                              ? const Align(
-                                                  alignment: Alignment.topLeft,
-                                                  child: Text(
-                                                    'No saved addresses',
-                                                    style: TextStyle(color: Colors.grey),
-                                                  ),
-                                                )
-                                              : Scrollbar(
-                                                  child: ListView.builder(
-                                                    padding: EdgeInsets.zero,
-                                                    itemCount: savedAddresses.length,
-                                                    itemBuilder: (context, index) {
-                                                      final addr = savedAddresses[index];
-                                                      return Padding(
-                                                        padding: const EdgeInsets.symmetric(vertical: 2.0),
-                                                        child: Row(
-                                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                                          children: [
-                                                            Expanded(
-                                                              child: Text(
-                                                                addr,
-                                                                maxLines: 2,
-                                                                overflow: TextOverflow.ellipsis,
-                                                                style: const TextStyle(fontSize: 17, height: 1.25),
-                                                              ),
-                                                            ),
-                                                            const SizedBox(width: 6),
-                                                            IconButton(
-                                                              icon: const Icon(Icons.close, size: 18, color: Colors.red),
-                                                              padding: EdgeInsets.zero,
-                                                              constraints: const BoxConstraints(),
-                                                              tooltip: 'Delete',
-                                                              onPressed: () => _deleteSavedAddress(addr),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                ),
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final bool isWide = constraints.maxWidth >= 960;
+
+                                    final Widget profileCard = Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(18),
+                                      decoration: BoxDecoration(
+                                        color: const Color.fromRGBO(247, 247, 249, 0.96),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: const Color.fromRGBO(255, 255, 255, 0.58),
                                         ),
-                                      ],
-                                    ),
-                                  ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Row(
+                                            children: [
+                                              Icon(
+                                                Icons.person_outline,
+                                                size: 20,
+                                                color: Color.fromRGBO(69, 0, 132, 1),
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                'Account Overview',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 18,
+                                                  color: Color.fromRGBO(35, 35, 35, 1),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 14),
+                                          _infoRow(
+                                            label: 'Username',
+                                            value: (username == null || username!.isEmpty)
+                                                ? 'Not set'
+                                                : username!,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _infoRow(
+                                            label: 'Email',
+                                            value: (user.email == null || user.email!.isEmpty)
+                                                ? 'Not set'
+                                                : user.email!,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _infoRow(
+                                            label: 'Saved Addresses',
+                                            value: '${savedAddresses.length}',
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    final Widget addressManagerCard = Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(18),
+                                      decoration: BoxDecoration(
+                                        color: const Color.fromRGBO(247, 247, 249, 0.96),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: const Color.fromRGBO(255, 255, 255, 0.58),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Row(
+                                            children: [
+                                              Icon(
+                                                Icons.home_work_outlined,
+                                                size: 20,
+                                                color: Color.fromRGBO(69, 0, 132, 1),
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                'Manage Addresses',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 18,
+                                                  color: Color.fromRGBO(35, 35, 35, 1),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          const Text(
+                                            'Set your home address and keep multiple saved options.',
+                                            style: TextStyle(
+                                              color: Color.fromRGBO(95, 95, 95, 1),
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 14),
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: GooglePlaceAutoCompleteTextField(
+                                              textEditingController: _addressController,
+                                              googleAPIKey: googleApiKey,
+                                              inputDecoration: InputDecoration(
+                                                labelText: 'Enter Address',
+                                                labelStyle: const TextStyle(color: Colors.black),
+                                                filled: true,
+                                                fillColor: const Color.fromRGBO(255, 255, 255, 1),
+                                                border: OutlineInputBorder(
+                                                  borderSide: BorderSide.none,
+                                                  borderRadius: BorderRadius.circular(14),
+                                                ),
+                                                floatingLabelBehavior:
+                                                    FloatingLabelBehavior.never,
+                                              ),
+                                              debounceTime: 800,
+                                              isLatLngRequired: false,
+                                              itemClick: (prediction) {
+                                                _addressController.text =
+                                                    prediction.description!;
+                                              },
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    const Color.fromRGBO(203, 182, 119, 0.9),
+                                                foregroundColor:
+                                                    const Color.fromRGBO(30, 30, 30, 1),
+                                                minimumSize: const Size.fromHeight(46),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                elevation: 0,
+                                              ),
+                                              onPressed: _updateHomeAddress,
+                                              child: const Text(
+                                                'Save Home Address',
+                                                style: TextStyle(fontWeight: FontWeight.w600),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 14),
+                                          const Text(
+                                            'Saved Addresses',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              color: Color.fromRGBO(35, 35, 35, 1),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Expanded(
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                color: const Color.fromRGBO(255, 255, 255, 1),
+                                                borderRadius: BorderRadius.circular(12),
+                                                border: Border.all(
+                                                  color: const Color.fromRGBO(224, 224, 230, 1),
+                                                ),
+                                              ),
+                                              child: savedAddresses.isEmpty
+                                                  ? const Center(
+                                                      child: Text(
+                                                        'No saved addresses',
+                                                        style: TextStyle(color: Colors.grey),
+                                                      ),
+                                                    )
+                                                  : Scrollbar(
+                                                      child: ListView.builder(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                          horizontal: 12,
+                                                          vertical: 10,
+                                                        ),
+                                                        itemCount: savedAddresses.length,
+                                                        itemBuilder: (context, index) {
+                                                          final String addr =
+                                                              savedAddresses[index];
+                                                          return Padding(
+                                                            padding: const EdgeInsets.symmetric(
+                                                                vertical: 4),
+                                                            child: Row(
+                                                              crossAxisAlignment:
+                                                                  CrossAxisAlignment.start,
+                                                              children: [
+                                                                Expanded(
+                                                                  child: Text(
+                                                                    addr,
+                                                                    maxLines: 2,
+                                                                    overflow: TextOverflow.ellipsis,
+                                                                    style: const TextStyle(
+                                                                      fontSize: 15,
+                                                                      height: 1.25,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(width: 6),
+                                                                IconButton(
+                                                                  icon: const Icon(
+                                                                    Icons.close,
+                                                                    size: 18,
+                                                                    color: Colors.red,
+                                                                  ),
+                                                                  padding: EdgeInsets.zero,
+                                                                  constraints:
+                                                                      const BoxConstraints(),
+                                                                  tooltip: 'Delete',
+                                                                  onPressed: () =>
+                                                                      _deleteSavedAddress(addr),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    return SingleChildScrollView(
+                                      child: Padding(
+                                        padding:
+                                            const EdgeInsets.symmetric(vertical: 8),
+                                        child: isWide
+                                            ? SizedBox(
+                                                height: mediaQuery.size.height -
+                                                    topPanelInset -
+                                                    bottomPanelInset -
+                                                    16,
+                                                child: Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.stretch,
+                                                  children: [
+                                                    Expanded(flex: 1, child: profileCard),
+                                                    const SizedBox(width: 20),
+                                                    Expanded(
+                                                      flex: 2,
+                                                      child: addressManagerCard,
+                                                    ),
+                                                  ],
+                                                ),
+                                              )
+                                            : Column(
+                                                children: [
+                                                  profileCard,
+                                                  const SizedBox(height: 16),
+                                                  SizedBox(
+                                                    height: 500,
+                                                    child: addressManagerCard,
+                                                  ),
+                                                ],
+                                              ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                              )
+                              ),
+                            )
                           : const Align(
                               alignment: Alignment.topCenter,
                               child: Text('User not authenticated'),
@@ -429,14 +516,38 @@ class _AccountPageState extends State<AccountPage> {
     );
   }
 
-  Widget _meshOrb({required double size, required List<Color> colors}) {
+  Widget _infoRow({required String label, required String value}) {
     return Container(
-      width: size,
-      height: size,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(colors: colors),
+        color: const Color.fromRGBO(255, 255, 255, 1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color.fromRGBO(226, 226, 232, 1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color.fromRGBO(95, 95, 95, 1),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Color.fromRGBO(30, 30, 30, 1),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
+
 }

@@ -932,39 +932,6 @@ class HomePageState extends State<HomePage> {
         ),
         child: Stack(
           children: [
-            Positioned(
-              left: -120,
-              bottom: -140,
-              child: _meshOrb(
-                size: 320,
-                colors: const [
-                  Color.fromRGBO(0, 0, 0, 0.75),
-                  Color.fromRGBO(32, 0, 64, 0.15),
-                ],
-              ),
-            ),
-            Positioned(
-              right: -90,
-              top: -120,
-              child: _meshOrb(
-                size: 340,
-                colors: const [
-                  Color.fromRGBO(90, 28, 148, 0.6),
-                  Color.fromRGBO(69, 0, 132, 0.0),
-                ],
-              ),
-            ),
-            Positioned(
-              left: 40,
-              top: 180,
-              child: _meshOrb(
-                size: 220,
-                colors: const [
-                  Color.fromRGBO(120, 56, 178, 0.28),
-                  Color.fromRGBO(69, 0, 132, 0.0),
-                ],
-              ),
-            ),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: padding)
                   .copyWith(top: topPadding, bottom: bottomPadding),
@@ -996,17 +963,6 @@ class HomePageState extends State<HomePage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _meshOrb({required double size, required List<Color> colors}) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(colors: colors),
       ),
     );
   }
