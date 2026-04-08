@@ -7,7 +7,7 @@ import time
 import os
 import requests
 import xml.etree.ElementTree as ET
-from prediction_service import predict_parking_availability
+from prediction_service import predict_parking_availability, prediction_service
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -193,66 +193,48 @@ def update_deck(deck_name):
 @cross_origin()
 def predict_parking():
     """
-    Predict parking availability at arrival time.
-    
-    Expected JSON payload:
+    POST /predict
     {
-        "arrival_time": "2024-02-03T14:30:00",  // ISO format datetime
-        "garage_name": "Chesapeake Hall Parking Deck",
-        "zone_type": "commuter"  // optional: commuter, accessible, electric, faculty
+        "arrival_time": "2025-10-15T10:30:00",
+        "garage_name":  "Ballard Parking Deck",
+        "zone_type":    "faculty"
     }
     """
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({"error": "No JSON data provided"}), 400
-        
-        # Validate required fields
-        if 'arrival_time' not in data or 'garage_name' not in data:
-            return jsonify({"error": "Missing required fields: arrival_time, garage_name"}), 400
-        
-        # Parse arrival time
-        try:
-            arrival_datetime = datetime.fromisoformat(data['arrival_time'].replace('Z', '+00:00'))
-        except ValueError as e:
-            return jsonify({"error": f"Invalid arrival_time format. Use ISO format: {e}"}), 400
-        
-        garage_name = data['garage_name']
-        zone_type = data.get('zone_type', 'commuter')
-        
-        # Get prediction
-        prediction = predict_parking_availability(arrival_datetime, garage_name, zone_type)
-        
-        if 'error' in prediction:
-            if prediction.get('error_type') == 'validation':
-                return jsonify(prediction), 400
-            return jsonify(prediction), 500
-        
-        # Format response
-        response = {
-            "success": True,
-            "prediction": {
-                "garage_name": garage_name,
-                "zone_type": zone_type,
-                "arrival_time": data['arrival_time'],
-                "predicted_spaces": prediction['predicted_spaces'],
-                "availability_percentage": round(prediction['availability_percentage'], 1),
-                "confidence": round(prediction['confidence'] * 100, 1),  # Convert to percentage
-                "model_used": prediction['model_used'],
-                "zone_id": prediction['zone_id']
-            },
-            "metadata": {
-                "prediction_time": datetime.now().isoformat(),
-                "features": prediction.get('features', {})
-            }
-        }
-        
-        return jsonify(response)
-        
-    except Exception as e:
-        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON data provided"}), 400
 
+    required = ['arrival_time', 'garage_name', 'zone_type']
+    missing  = [f for f in required if f not in data]
+    if missing:
+        return jsonify({"error": f"Missing fields: {missing}"}), 400
+
+    try:
+        arrival_datetime = datetime.fromisoformat(
+            data['arrival_time'].replace('Z', '+00:00')
+        )
+    except ValueError as e:
+        return jsonify({"error": f"Invalid arrival_time: {e}"}), 400
+
+    result = prediction_service.predict_all_zones_for_type(
+        arrival_datetime,
+        data['garage_name'],
+        data['zone_type'],
+    )
+
+    if 'error' in result:
+        return jsonify(result), 400 if result.get('error_type') == 'validation' else 500
+
+    return jsonify({
+        "success":      True,
+        "prediction":   result["primary"],
+        "alternatives": result["alternatives"],
+        "all_zones":    result["all_zones"],   # for map overlay / frontend use
+        "metadata": {
+            "model_used":      result["model_used"],
+            "prediction_time": datetime.now().isoformat(),
+        }
+    })
 @app.route('/', methods=['GET'])
 @cross_origin()
 def home():

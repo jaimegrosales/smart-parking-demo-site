@@ -65,10 +65,18 @@ class PredictionService {
   
   /// Format prediction for display
   String formatPredictionMessage(Map<String, dynamic> prediction) {
-    final spaces = prediction['predicted_spaces'];
-    final percentage = prediction['availability_percentage'];
-    final garageName = prediction['garage_name'];
-    final zoneType = prediction['zone_type'];
+    final spaces = prediction['predicted_spaces'] ?? 0;
+
+    // Support both old and new backend keys.
+    final dynamic pctRaw =
+      prediction['availability_percentage'] ?? prediction['availability_pct'];
+    final double percentage = (pctRaw is num)
+      ? pctRaw.toDouble()
+      : double.tryParse(pctRaw?.toString() ?? '') ?? 0.0;
+
+    final garageName =
+      (prediction['garage_name'] ?? prediction['garage'] ?? 'Unknown').toString();
+    final zoneType = (prediction['zone_type'] ?? 'unknown').toString();
     
     String availabilityStatus;
     if (percentage >= 70) {

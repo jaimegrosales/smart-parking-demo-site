@@ -135,7 +135,84 @@ class ParkingPredictionService:
         self.events_lookup = None
         self.summer_lookup = None
         self.school_lookup = None
+    
+        # ── Constants ────────────────────────────────────────────────────────────────
+        self.LOW_AVAILABILITY_THRESHOLD = 0.15   # < 15% available → flag as "low"
+        self.ALT_MIN_AVAILABILITY = 0.10         # alternatives must have > 10% to be recommended
 
+        # ── Inverse lookup: zone_id → garage name ────────────────────────────────────
+        # Add this to __init__ (build it automatically from self.garage_zones)
+        self.zone_to_garage = {
+            zone_id: garage_name
+            for garage_name, zones in self.garage_zones.items()
+            for zone_type_key, zone_id in zones.items()
+            if zone_id is not None
+        }
+
+    def predict_all_zones_for_type(
+        self,
+        arrival_time: datetime,
+        garage_name: str,
+        zone_type: str,
+    ) -> dict:
+
+        self.load_models()
+
+        ts = pd.to_datetime(arrival_time)
+        event_flags = self._event_flags(ts)
+        model_type  = self.classify_time_period(ts, event_flags)
+
+        # ── 1. Resolve the target zone for the user's garage ─────────────────
+        target_zone = self.get_zone_for_garage(garage_name, zone_type)
+
+        # ── 2. Predict ALL zones of this permit type in one batch ────────────
+        # _predict_zone_group already does this — returns {zone_id: predicted_spaces}
+        base_predictions = self._predict_zone_group(ts, target_zone, model_type, event_flags)
+
+        # ── 3. Apply spatial adjustment to the full group ────────────────────
+        adjusted_predictions = {}
+        for zone_id in base_predictions:
+            adjusted_predictions[zone_id] = self._apply_spatial_adjustment(
+                zone_id, base_predictions
+            )
+
+        # ── 4. Build structured per-zone results ─────────────────────────────
+        zone_results = {}
+        for zone_id, predicted_spaces in adjusted_predictions.items():
+            capacity = self._zone_capacity_for(zone_id)
+            avail_pct = predicted_spaces / capacity if capacity > 0 else 0.0
+            zone_results[zone_id] = {
+                "zone_id":          zone_id,
+                "garage":           self.zone_to_garage.get(zone_id, "Unknown"),
+                "deck":             self.zone_decks.get(zone_id, "Unknown"),
+                "predicted_spaces": predicted_spaces,
+                "capacity":         capacity,
+                "availability_pct": round(min(1.0, max(0.0, avail_pct)) * 100, 1),
+                "is_full":          predicted_spaces == 0,
+                "is_low":           avail_pct < self.LOW_AVAILABILITY_THRESHOLD,
+            }
+
+        # ── 5. Build primary result ──────────────────────────────────────────
+        primary = {**zone_results[target_zone], "zone_type": zone_type}
+
+        # ── 6. Rank alternatives (same type, exclude primary, sort by avail) ─
+        alternatives = sorted(
+            [r for zid, r in zone_results.items() if zid != target_zone],
+            key=lambda r: r["availability_pct"],
+            reverse=True,  # most available first
+        )
+        # Only surface alternatives that actually have some availability
+        alternatives = [r for r in alternatives if r["availability_pct"] > self.ALT_MIN_AVAILABILITY * 100]
+
+        return {
+            "zone_type":    zone_type,
+            "arrival_time": ts.isoformat(),
+            "model_used":   model_type,
+            "primary":      primary,
+            "alternatives": alternatives,
+            "all_zones":    zone_results,  # useful for map overlays
+        }
+        
     def _resolve_bundle_dir(self) -> str:
         """Resolve model bundle directory for the active production model set."""
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -375,6 +452,7 @@ class ParkingPredictionService:
         if self._is_summer_date(ts):
             return 'summer'
         return 'school'
+
     
     def predict_availability(self, arrival_time, garage_name, zone_type='commuter'):
         """
