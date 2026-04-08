@@ -850,7 +850,7 @@ class _TrafficPageState extends State<TrafficPage> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Expanded(
-                                  flex: 6,
+                                  flex: stackCards ? 3 : 6,
                                   child: Card(
                                       margin: EdgeInsets.zero,
                                       elevation: 1.5,
@@ -954,7 +954,7 @@ class _TrafficPageState extends State<TrafficPage> {
                                   height: stackCards ? cardsGap : 0,
                                 ),
                                 Expanded(
-                                  flex: stackCards ? 5 : 4,
+                                  flex: stackCards ? 8 : 4,
                                   child: MediaQuery(
                                     data: mediaQuery.copyWith(
                                       textScaler: TextScaler.linear(rightPanelScale),
@@ -965,6 +965,7 @@ class _TrafficPageState extends State<TrafficPage> {
                                         crossAxisAlignment: CrossAxisAlignment.stretch,
                                         children: [
                                           Expanded(
+                                            flex: stackCards ? 4 : 1,
                                             child: Card(
                                               margin: EdgeInsets.zero,
                                               elevation: 1.5,
@@ -1078,6 +1079,7 @@ class _TrafficPageState extends State<TrafficPage> {
                                           ),
                                           SizedBox(height: sectionGap * 0.7),
                                           Expanded(
+                                            flex: stackCards ? 5 : 1,
                                             child: Card(
                                               margin: EdgeInsets.zero,
                                               elevation: 1.5,
