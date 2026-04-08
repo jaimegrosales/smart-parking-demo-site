@@ -34,6 +34,11 @@ class _SignupState extends State<Signup> {
   // build the UI for the app
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final bool isWide = mediaQuery.size.width >= 900;
+    final double horizontalPadding =
+        isWide ? mediaQuery.size.width * 0.16 : mediaQuery.size.width * 0.06;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
@@ -63,29 +68,61 @@ class _SignupState extends State<Signup> {
               ],
             ),
           ),
-          child: Stack(
-            children: [
-              SafeArea(
-                child: SingleChildScrollView(
-                  padding:
-                      const EdgeInsets.fromLTRB(16, kToolbarHeight + 24, 16, 16),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 40),
-                      _usernameField(),
-                      const SizedBox(height: 20),
-                      _emailField(),
-                      const SizedBox(height: 20),
-                      _passwordField(),
-                      const SizedBox(height: 10),
-                      _passwordRequirements(),
-                      const SizedBox(height: 40),
-                      _signupButton(context),
-                    ],
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                kToolbarHeight + 24,
+                horizontalPadding,
+                24,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 620),
+                  child: Container(
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      color: const Color.fromRGBO(247, 247, 249, 0.96),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: const Color.fromRGBO(255, 255, 255, 0.58),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Create Your Account',
+                          style: TextStyle(
+                            color: Color.fromRGBO(35, 35, 35, 1),
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Sign up to save addresses and get parking predictions faster.',
+                          style: TextStyle(
+                            color: Color.fromRGBO(95, 95, 95, 1),
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        _usernameField(),
+                        const SizedBox(height: 16),
+                        _emailField(),
+                        const SizedBox(height: 16),
+                        _passwordField(),
+                        const SizedBox(height: 12),
+                        _passwordRequirements(),
+                        const SizedBox(height: 22),
+                        _signupButton(context),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -99,7 +136,10 @@ class _SignupState extends State<Signup> {
       children: [
         const Text(
           'Username',
-          style: TextStyle(color: Color.fromRGBO(255, 255, 255, 1)),
+          style: TextStyle(
+            color: Color.fromRGBO(45, 45, 45, 1),
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 6),
         TextField(
@@ -113,8 +153,22 @@ class _SignupState extends State<Signup> {
             ),
             fillColor: const Color.fromRGBO(247, 247, 249, 1),
             border: OutlineInputBorder(
-              borderSide: BorderSide.none,
               borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color.fromRGBO(220, 220, 226, 1),
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color.fromRGBO(220, 220, 226, 1),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color.fromRGBO(69, 0, 132, 1),
+              ),
             ),
           ),
         ),
@@ -129,7 +183,10 @@ class _SignupState extends State<Signup> {
       children: [
         const Text(
           'Email Address',
-          style: TextStyle(color: Color.fromRGBO(255, 255, 255, 1)),
+          style: TextStyle(
+            color: Color.fromRGBO(45, 45, 45, 1),
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 6),
         TextField(
@@ -143,8 +200,22 @@ class _SignupState extends State<Signup> {
                 fontSize: 14),
             fillColor: const Color(0xffF7F7F9),
             border: OutlineInputBorder(
-                borderSide: BorderSide.none,
+                borderSide: const BorderSide(
+                  color: Color.fromRGBO(220, 220, 226, 1),
+                ),
                 borderRadius: BorderRadius.circular(14)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color.fromRGBO(220, 220, 226, 1),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color.fromRGBO(69, 0, 132, 1),
+              ),
+            ),
           ),
         ),
       ],
@@ -158,7 +229,10 @@ class _SignupState extends State<Signup> {
       children: [
         const Text(
           'Password',
-          style: TextStyle(color: Color.fromRGBO(255, 255, 255, 1)),
+          style: TextStyle(
+            color: Color.fromRGBO(45, 45, 45, 1),
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 6),
         TextField(
@@ -173,8 +247,22 @@ class _SignupState extends State<Signup> {
             filled: true,
             fillColor: const Color(0xffF7F7F9),
             border: OutlineInputBorder(
-              borderSide: BorderSide.none,
+              borderSide: const BorderSide(
+                color: Color.fromRGBO(220, 220, 226, 1),
+              ),
               borderRadius: BorderRadius.circular(14),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color.fromRGBO(220, 220, 226, 1),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color.fromRGBO(69, 0, 132, 1),
+              ),
             ),
             suffixIcon: IconButton(
               icon: Icon(
@@ -203,8 +291,9 @@ class _SignupState extends State<Signup> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.1),
+        color: const Color.fromRGBO(255, 255, 255, 1),
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color.fromRGBO(224, 224, 230, 1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,7 +319,9 @@ class _SignupState extends State<Signup> {
         Text(
           text,
           style: TextStyle(
-            color: met ? Colors.green : Colors.red,
+            color: met
+                ? const Color.fromRGBO(24, 120, 72, 1)
+                : const Color.fromRGBO(185, 42, 42, 1),
           ),
         ),
       ],
@@ -272,64 +363,60 @@ class _SignupState extends State<Signup> {
 
   // Signup button that integrates Firebase Authentication and Firestore.
   Widget _signupButton(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(
-        maxWidth: 400.0,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40.0),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color.fromRGBO(69, 0, 132, 1),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            minimumSize: const Size(double.infinity, 60),
-            elevation: 0,
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color.fromRGBO(203, 182, 119, 0.9),
+          foregroundColor: const Color.fromRGBO(30, 30, 30, 1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
           ),
-          onPressed: () async {
-            if (_usernameController.text.isEmpty ||
-                _emailController.text.isEmpty ||
-                _passwordController.text.isEmpty) {
-              showCustomSnackBar(context, 'Please fill all fields.');
-              return;
-            }
-            try {
-              // Create a new user account with Firebase Authentication
-              UserCredential userCredential =
-                  await FirebaseAuth.instance.createUserWithEmailAndPassword(
-                email: _emailController.text,
-                password: _passwordController.text,
-              );
-              // Get the userID
-              String userId = userCredential.user!.uid;
+          minimumSize: const Size(double.infinity, 52),
+          elevation: 0,
+        ),
+        onPressed: () async {
+          if (_usernameController.text.isEmpty ||
+              _emailController.text.isEmpty ||
+              _passwordController.text.isEmpty) {
+            showCustomSnackBar(context, 'Please fill all fields.');
+            return;
+          }
+          try {
+            // Create a new user account with Firebase Authentication
+            UserCredential userCredential =
+                await FirebaseAuth.instance.createUserWithEmailAndPassword(
+              email: _emailController.text,
+              password: _passwordController.text,
+            );
+            // Get the userID
+            String userId = userCredential.user!.uid;
 
-              // Save additional user information in Firestore
-              await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(userId)
-                  .set({
-                'username': _usernameController.text,
-                'email': _emailController.text,
-                'userID': userId,
-              });
+            // Save additional user information in Firestore
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(userId)
+                .set({
+              'username': _usernameController.text,
+              'email': _emailController.text,
+              'userID': userId,
+            });
 
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AccountPage(),
-                ),
-              );
-            } catch (e) {
-              showCustomSnackBar(context, 'Error creating account.');
-            }
-          },
-          child: const Text(
-            "Sign Up",
-            style: TextStyle(
-              color: Color.fromRGBO(255, 255, 255, 1),
-              fontSize: 18,
-            ),
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AccountPage(),
+              ),
+            );
+          } catch (e) {
+            showCustomSnackBar(context, 'Error creating account.');
+          }
+        },
+        child: const Text(
+          'Sign Up',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
