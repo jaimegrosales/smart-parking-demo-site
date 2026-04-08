@@ -5,6 +5,11 @@ class AppBarDateTimeCenter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (screenWidth < 430) {
+      return const SizedBox.shrink();
+    }
+
     return IgnorePointer(
       child: SafeArea(
         child: Center(
@@ -41,14 +46,17 @@ class AppBarDateTimeCenter extends StatelessWidget {
               ];
               final hour12 = now.hour == 0 || now.hour == 12 ? 12 : now.hour % 12;
               final amPm = now.hour < 12 ? 'AM' : 'PM';
-              final label =
+              final fullLabel =
                   '${weekdays[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}  |  $hour12:${now.minute.toString().padLeft(2, '0')} $amPm';
+              final compactLabel =
+                  '$hour12:${now.minute.toString().padLeft(2, '0')} $amPm';
+              final bool useCompact = screenWidth < 760;
 
               return Text(
-                label,
-                style: const TextStyle(
+                useCompact ? compactLabel : fullLabel,
+                style: TextStyle(
                   color: Color.fromRGBO(235, 235, 240, 1),
-                  fontSize: 15,
+                  fontSize: useCompact ? 13 : 15,
                   fontWeight: FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,

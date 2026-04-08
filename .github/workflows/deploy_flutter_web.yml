@@ -39,6 +39,7 @@ jobs:
           flutter build web --release
           --base-href /smart-parking-demo-site/
           --dart-define=BACKEND_BASE_URL=${{ vars.BACKEND_BASE_URL }}
+          --dart-define=TOMTOM_API_KEY=${{ secrets.TOMTOM_API_KEY }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

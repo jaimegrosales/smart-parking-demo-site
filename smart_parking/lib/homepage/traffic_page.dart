@@ -25,6 +25,9 @@ class TrafficPage extends StatefulWidget {
 }
 
 class _TrafficPageState extends State<TrafficPage> {
+  static const String _tomtomApiKey =
+      String.fromEnvironment('TOMTOM_API_KEY', defaultValue: '');
+
   final ScrollController _forecastScrollController = ScrollController();
   double _forecastScrollValue = 0;
   String _weatherInfo = "Fetching weather...";
@@ -193,14 +196,15 @@ class _TrafficPageState extends State<TrafficPage> {
   Future<List<Map<String, dynamic>>> getTrafficIncidents() async {
     try {
       // TomTom Traffic Incidents API for Harrisonburg area
-      const String apiKey =
-          'YOUR_TOMTOM_API_KEY'; // Replace with actual TomTom API key
+      if (_tomtomApiKey.isEmpty) {
+        return [];
+      }
       const double lat = 38.4495;
       const double lon = -78.8690;
       const double radius = 10000; // 10km radius around JMU
 
       final url = Uri.parse(
-        'https://api.tomtom.com/traffic/services/5/incidentDetails?key=$apiKey&bbox=${lon - 0.1},${lat - 0.1},${lon + 0.1},${lat + 0.1}&fields=incidents{type,geometry,properties{iconCategory,magnitudeOfDelay,events{description,code},startTime,endTime}}&language=en&categoryFilter=0,1,2,3,4,5,6,7,8,9,10,11,14',
+        'https://api.tomtom.com/traffic/services/5/incidentDetails?key=$_tomtomApiKey&bbox=${lon - 0.1},${lat - 0.1},${lon + 0.1},${lat + 0.1}&fields=incidents{type,geometry,properties{iconCategory,magnitudeOfDelay,events{description,code},startTime,endTime}}&language=en&categoryFilter=0,1,2,3,4,5,6,7,8,9,10,11,14',
       );
 
       final response = await http.get(url);
@@ -236,13 +240,14 @@ class _TrafficPageState extends State<TrafficPage> {
   Future<String> getTrafficStatus() async {
     try {
       // TomTom Traffic Flow API for general area traffic
-      const String apiKey =
-          'W2nPBT8SqHnugaBP3Co8MWh58O8tVLCs'; // Replace with actual TomTom API key
+      if (_tomtomApiKey.isEmpty) {
+        return "Failed to retrieve traffic data (TOMTOM_API_KEY not configured)";
+      }
       const double lat = 38.4495;
       const double lon = -78.8690;
 
       final url = Uri.parse(
-        'https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json?point=$lat,$lon&unit=mph&key=$apiKey',
+        'https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json?point=$lat,$lon&unit=mph&key=$_tomtomApiKey',
       );
 
       final response = await http.get(url);
@@ -730,26 +735,28 @@ class _TrafficPageState extends State<TrafficPage> {
     final double pageVerticalPadding =
         (mediaQuery.size.height * 0.018).clamp(10.0, 22.0).toDouble();
     final double sectionGap =
-        (mediaQuery.size.width * 0.012).clamp(10.0, 20.0).toDouble();
+      (mediaQuery.size.width * 0.012).clamp(10.0, 18.0).toDouble();
     final double cardPadding =
-        (mediaQuery.size.width * 0.014).clamp(12.0, 22.0).toDouble();
+      (mediaQuery.size.width * 0.014).clamp(14.0, 20.0).toDouble();
     final double itemPadding =
-        (mediaQuery.size.width * 0.010).clamp(8.0, 14.0).toDouble();
+        (mediaQuery.size.width * 0.011).clamp(10.0, 16.0).toDouble();
     final double itemSpacing =
-        (mediaQuery.size.width * 0.006).clamp(4.0, 10.0).toDouble();
-    final double chipWidth =
-        (mediaQuery.size.width * 0.105).clamp(118.0, 168.0).toDouble();
-    final double chipMaxHeight =
-        (mediaQuery.size.height * 0.125).clamp(88.0, 108.0).toDouble();
+        (mediaQuery.size.width * 0.007).clamp(6.0, 12.0).toDouble();
+    final double chipSide =
+      (mediaQuery.size.width * 0.088).clamp(96.0, 124.0).toDouble();
     final double contentScale =
-        (mediaQuery.size.width / 1200).clamp(0.9, 1.15).toDouble();
+      (mediaQuery.size.width / 1200).clamp(0.96, 1.18).toDouble();
     final double rightPanelScale =
-        (contentScale * 0.9).clamp(0.82, 1.02).toDouble();
+      (contentScale * 0.96).clamp(0.90, 1.05).toDouble();
     final double rightPanelIconSize =
         (22 * rightPanelScale).clamp(18.0, 24.0).toDouble();
+    final bool stackCards = mediaQuery.size.width < 980;
+    final bool compactWeatherLayout =
+      mediaQuery.size.width < 430 || mediaQuery.size.height < 760;
     final double containerWidth =
-      (mediaQuery.size.width * 0.80).clamp(320.0, 1100.0).toDouble();
+      (mediaQuery.size.width * (stackCards ? 0.94 : 0.80)).clamp(320.0, 1100.0).toDouble();
     const double cardsGap = 4.0; // match map/filter gap
+    const Color neutralCardBorder = Color.fromRGBO(220, 220, 226, 1);
 
     return Scaffold(
       backgroundColor: const Color.fromRGBO(0, 0, 0, 1),
@@ -838,12 +845,20 @@ class _TrafficPageState extends State<TrafficPage> {
                           data: IconThemeData(
                             size: (24 * contentScale).clamp(20.0, 30.0).toDouble(),
                           ),
-                          child: Row(
+                          child: Flex(
+                              direction: stackCards ? Axis.vertical : Axis.horizontal,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Expanded(
                                   flex: 6,
                                   child: Card(
+                                      margin: EdgeInsets.zero,
+                                      elevation: 1.5,
+                                      clipBehavior: Clip.antiAlias,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        side: const BorderSide(color: neutralCardBorder),
+                                      ),
                                       color: const Color.fromRGBO(247, 247, 249, 1),
                                       child: Padding(
                                         padding: EdgeInsets.all(cardPadding),
@@ -866,9 +881,15 @@ class _TrafficPageState extends State<TrafficPage> {
                                                       ),
                                               ],
                                             ),
-                                            const SizedBox(height: 8),
-                                            Text(_eventsInfo, style: const TextStyle(fontSize: 16)),
-                                            const Divider(),
+                                            SizedBox(height: sectionGap * 0.35),
+                                            Divider(height: 1, thickness: 1, color: Colors.grey.shade400),
+                                            SizedBox(height: sectionGap * 1.15),
+                                            if (_todaysEvents.isNotEmpty)
+                                              Padding(
+                                                padding: EdgeInsets.only(bottom: sectionGap * 0.2),
+                                                child: Text(_eventsInfo, style: const TextStyle(fontSize: 17)),
+                                              ),
+                                            SizedBox(height: sectionGap * 0.25),
                                             Text('Today\'s Events:', style: Theme.of(context).textTheme.titleSmall),
                                             const SizedBox(height: 4),
                                             Expanded(
@@ -897,7 +918,7 @@ class _TrafficPageState extends State<TrafficPage> {
                                                                   maxLines: 2,
                                                                   overflow: TextOverflow.ellipsis,
                                                                 ),
-                                                                const SizedBox(height: 2),
+                                                                SizedBox(height: itemSpacing * 0.5),
                                                                 Text('⏰ ${event['time'] ?? 'TBD'}', style: const TextStyle(fontSize: 14, color: Colors.blue)),
                                                                 if (event['location'] != null)
                                                                   Text('📍 ${event['location']}', style: const TextStyle(fontSize: 14, color: Colors.green)),
@@ -928,271 +949,314 @@ class _TrafficPageState extends State<TrafficPage> {
                                       ),
                                     ),
                                 ),
-                                const SizedBox(width: cardsGap),
+                                SizedBox(
+                                  width: stackCards ? 0 : cardsGap,
+                                  height: stackCards ? cardsGap : 0,
+                                ),
                                 Expanded(
-                                  flex: 4,
-                                  child: Card(
-                                      color: const Color.fromRGBO(247, 247, 249, 1),
-                                      child: Padding(
-                                        padding: EdgeInsets.all(cardPadding),
-                                        child: MediaQuery(
-                                          data: mediaQuery.copyWith(
-                                            textScaler: TextScaler.linear(rightPanelScale),
-                                          ),
-                                          child: IconTheme(
-                                            data: IconThemeData(size: rightPanelIconSize),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                                              children: [
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                                                    children: [
-                                                      Padding(
-                                                        padding: EdgeInsets.only(bottom: sectionGap * 0.5),
-                                                        child: Row(
-                                                          children: [
-                                                            const Icon(Icons.traffic, color: Color.fromRGBO(158, 158, 158, 1)),
-                                                            const SizedBox(width: 8),
-                                                            Text('Traffic', style: Theme.of(context).textTheme.titleMedium),
-                                                            const Spacer(),
-                                                            _trafficLoading || _incidentsLoading
-                                                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                                                                : IconButton(
-                                                                    icon: const Icon(Icons.refresh),
-                                                                    tooltip: 'Refresh',
-                                                                    onPressed: _fetchTrafficAndIncidents,
-                                                                  ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                      Padding(
-                                                        padding: EdgeInsets.only(bottom: sectionGap * 0.2),
-                                                        child: Text(_trafficInfo, style: const TextStyle(fontSize: 16)),
-                                                      ),
-                                                      Padding(
-                                                        padding: EdgeInsets.only(bottom: sectionGap * 0.2),
-                                                        child: Text(
-                                                          'Traffic Alerts & Incidents:',
-                                                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                                                        ),
-                                                      ),
-                                                      Expanded(
-                                                        child: _trafficIncidents.isNotEmpty
-                                                            ? ScrollConfiguration(
-                                                                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
-                                                                child: ListView.builder(
-                                                                  physics: const AlwaysScrollableScrollPhysics(),
-                                                                  itemCount: _trafficIncidents.length,
-                                                                  itemBuilder: (context, index) {
-                                                                    final incident = _trafficIncidents[index];
-                                                                    return Container(
-                                                                      width: double.infinity,
-                                                                      margin: EdgeInsets.only(bottom: itemSpacing),
-                                                                      padding: EdgeInsets.symmetric(horizontal: itemPadding, vertical: itemSpacing + 1),
-                                                                      decoration: BoxDecoration(
-                                                                        color: Colors.white,
-                                                                        borderRadius: BorderRadius.circular(8),
-                                                                      ),
-                                                                      child: Column(
-                                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                                        children: [
-                                                                          Text(
-                                                                            incident['description'] ?? 'Traffic incident',
-                                                                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                                                                            maxLines: 2,
-                                                                            overflow: TextOverflow.ellipsis,
-                                                                          ),
-                                                                          if (incident['delay'] > 0)
-                                                                            Text('Delay: ${incident['delay']} min', style: const TextStyle(fontSize: 12, color: Colors.red)),
-                                                                        ],
-                                                                      ),
-                                                                    );
-                                                                  },
+                                  flex: stackCards ? 5 : 4,
+                                  child: MediaQuery(
+                                    data: mediaQuery.copyWith(
+                                      textScaler: TextScaler.linear(rightPanelScale),
+                                    ),
+                                    child: IconTheme(
+                                      data: IconThemeData(size: rightPanelIconSize),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          Expanded(
+                                            child: Card(
+                                              margin: EdgeInsets.zero,
+                                              elevation: 1.5,
+                                              clipBehavior: Clip.antiAlias,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(16),
+                                                side: const BorderSide(color: neutralCardBorder),
+                                              ),
+                                              color: const Color.fromRGBO(247, 247, 249, 1),
+                                              child: Padding(
+                                                padding: EdgeInsets.all(cardPadding),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                  children: [
+                                                    Padding(
+                                                      padding: EdgeInsets.only(bottom: sectionGap * 0.25),
+                                                      child: Row(
+                                                        children: [
+                                                          const Icon(Icons.traffic, color: Color.fromRGBO(158, 158, 158, 1)),
+                                                          const SizedBox(width: 8),
+                                                          Text('Traffic', style: Theme.of(context).textTheme.titleMedium),
+                                                          const Spacer(),
+                                                          _trafficLoading || _incidentsLoading
+                                                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                                              : IconButton(
+                                                                  icon: const Icon(Icons.refresh),
+                                                                  tooltip: 'Refresh',
+                                                                  onPressed: _fetchTrafficAndIncidents,
                                                                 ),
-                                                              )
-                                                            : Container(
-                                                                width: double.infinity,
-                                                                padding: const EdgeInsets.all(12),
-                                                                decoration: BoxDecoration(
-                                                                  color: Colors.grey.shade100,
-                                                                  borderRadius: BorderRadius.circular(8),
-                                                                ),
-                                                                child: Center(
-                                                                  child: Text(
-                                                                    (_trafficAlert.isEmpty || _trafficAlert == "No alerts")
-                                                                        ? 'No alerts or incidents right now'
-                                                                        : _trafficAlert,
-                                                                    style: TextStyle(
-                                                                      fontSize: 14,
-                                                                      color: (_trafficAlert.isEmpty || _trafficAlert == "No alerts")
-                                                                          ? Colors.grey
-                                                                          : Colors.black87,
-                                                                      fontWeight: (_trafficAlert.isEmpty || _trafficAlert == "No alerts")
-                                                                          ? FontWeight.normal
-                                                                          : FontWeight.bold,
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    Divider(height: 1, thickness: 1, color: Colors.grey.shade400),
+                                                    SizedBox(height: sectionGap * 1.15),
+                                                    Padding(
+                                                      padding: EdgeInsets.only(bottom: sectionGap * 0.2),
+                                                      child: Text(_trafficInfo, style: const TextStyle(fontSize: 17)),
+                                                    ),
+                                                    SizedBox(height: sectionGap * 0.3),
+                                                    Padding(
+                                                      padding: EdgeInsets.only(bottom: sectionGap * 0.2),
+                                                      child: Text(
+                                                        'Traffic Alerts & Incidents:',
+                                                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      child: _trafficIncidents.isNotEmpty
+                                                          ? ScrollConfiguration(
+                                                              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
+                                                              child: ListView.builder(
+                                                                physics: const AlwaysScrollableScrollPhysics(),
+                                                                itemCount: _trafficIncidents.length,
+                                                                itemBuilder: (context, index) {
+                                                                  final incident = _trafficIncidents[index];
+                                                                  return Container(
+                                                                    width: double.infinity,
+                                                                    margin: EdgeInsets.only(bottom: itemSpacing),
+                                                                    padding: EdgeInsets.symmetric(horizontal: itemPadding, vertical: itemSpacing + 1),
+                                                                    decoration: BoxDecoration(
+                                                                      color: Colors.white,
+                                                                      borderRadius: BorderRadius.circular(8),
                                                                     ),
-                                                                    textAlign: TextAlign.center,
+                                                                    child: Column(
+                                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                                      children: [
+                                                                        Text(
+                                                                          incident['description'] ?? 'Traffic incident',
+                                                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                                                          maxLines: 2,
+                                                                          overflow: TextOverflow.ellipsis,
+                                                                        ),
+                                                                        if (incident['delay'] > 0)
+                                                                          Text('Delay: ${incident['delay']} min', style: const TextStyle(fontSize: 12, color: Colors.red)),
+                                                                      ],
+                                                                    ),
+                                                                  );
+                                                                },
+                                                              ),
+                                                            )
+                                                          : Container(
+                                                              width: double.infinity,
+                                                              padding: const EdgeInsets.all(12),
+                                                              decoration: BoxDecoration(
+                                                                color: Colors.grey.shade100,
+                                                                borderRadius: BorderRadius.circular(8),
+                                                              ),
+                                                              child: Center(
+                                                                child: Text(
+                                                                  (_trafficAlert.isEmpty || _trafficAlert == "No alerts")
+                                                                      ? 'No alerts or incidents right now'
+                                                                      : _trafficAlert,
+                                                                  style: TextStyle(
+                                                                    fontSize: 14,
+                                                                    color: (_trafficAlert.isEmpty || _trafficAlert == "No alerts")
+                                                                        ? Colors.grey
+                                                                        : Colors.black87,
+                                                                    fontWeight: (_trafficAlert.isEmpty || _trafficAlert == "No alerts")
+                                                                        ? FontWeight.normal
+                                                                        : FontWeight.bold,
                                                                   ),
+                                                                  textAlign: TextAlign.center,
                                                                 ),
                                                               ),
-                                                      ),
-                                                    ],
-                                                  ),
+                                                            ),
+                                                    ),
+                                                  ],
                                                 ),
-                                                Padding(
-                                                  padding: EdgeInsets.symmetric(vertical: sectionGap * 0.7),
-                                                  child: Divider(height: 1, thickness: 1, color: Colors.grey.shade400),
-                                                ),
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                                                    children: [
-                                                      Padding(
-                                                        padding: EdgeInsets.only(bottom: sectionGap * 0.5),
-                                                        child: Row(
-                                                          children: [
-                                                            const Icon(Icons.cloud, color: Color.fromRGBO(158, 158, 158, 1)),
-                                                            const SizedBox(width: 7),
-                                                            Text('Weather', style: Theme.of(context).textTheme.titleMedium),
-                                                            const Spacer(),
-                                                            _weatherLoading || _forecastLoading
-                                                                ? const SizedBox(width: 19, height: 19, child: CircularProgressIndicator(strokeWidth: 2))
-                                                                : IconButton(
-                                                                    icon: const Icon(Icons.refresh),
-                                                                    iconSize: 21,
-                                                                    padding: EdgeInsets.zero,
-                                                                    constraints: BoxConstraints(minWidth: 30 + itemPadding / 2, minHeight: 30 + itemPadding / 2),
-                                                                    visualDensity: VisualDensity.compact,
-                                                                    tooltip: 'Refresh',
-                                                                    onPressed: _fetchWeatherAndForecast,
-                                                                  ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                      Padding(
-                                                        padding: EdgeInsets.only(bottom: sectionGap * 0.2),
-                                                        child: Text(_weatherInfo, style: const TextStyle(fontSize: 18), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                                      ),
-                                                      Padding(
-                                                        padding: EdgeInsets.only(bottom: sectionGap * 0.2),
-                                                        child: Text(_weatherAlert, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                                      ),
-                                                      Padding(
-                                                        padding: EdgeInsets.only(bottom: sectionGap * 0.2),
-                                                        child: Text('Today\'s Forecast:', style: Theme.of(context).textTheme.titleSmall),
-                                                      ),
-                                                      Expanded(
-                                                        child: _forecast.isNotEmpty
-                                                            ? Listener(
-                                                                onPointerSignal: _onForecastPointerSignal,
-                                                                child: Column(
-                                                                  children: [
-                                                                    SizedBox(
-                                                                      height: chipMaxHeight,
-                                                                      child: ListView.separated(
-                                                                        controller: _forecastScrollController,
-                                                                        primary: false,
-                                                                        physics: const AlwaysScrollableScrollPhysics(),
-                                                                        scrollDirection: Axis.horizontal,
-                                                                        padding: EdgeInsets.zero,
-                                                                        itemCount: _forecast.length,
-                                                                        separatorBuilder: (_, __) => const SizedBox(width: 10),
-                                                                        itemBuilder: (context, index) {
-                                                                          final f = _forecast[index];
-                                                                          return Center(
-                                                                            child: ConstrainedBox(
-                                                                              constraints: BoxConstraints(maxHeight: chipMaxHeight),
-                                                                              child: LayoutBuilder(
-                                                                                builder: (context, constraints) {
-                                                                                  final double chipHeight = constraints.maxHeight.isFinite ? constraints.maxHeight : chipMaxHeight;
-                                                                                  final double timeFontSize = (chipHeight * 0.13).clamp(11.0, 14.0).toDouble();
-                                                                                  final double detailFontSize = (chipHeight * 0.10).clamp(9.0, 12.0).toDouble();
-                                                                                  return Container(
-                                                                                    width: chipWidth,
-                                                                                    padding: EdgeInsets.symmetric(horizontal: itemPadding, vertical: itemSpacing + 2),
-                                                                                    decoration: BoxDecoration(
-                                                                                      color: Colors.white,
-                                                                                      borderRadius: BorderRadius.zero,
-                                                                                      border: Border.all(color: Colors.grey.shade400, width: 1),
-                                                                                    ),
-                                                                                    child: Column(
-                                                                                      mainAxisAlignment: MainAxisAlignment.center,
-                                                                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                                                                      children: [
-                                                                                        Text(
-                                                                                          (() {
-                                                                                            final dt = f['time'] as DateTime;
-                                                                                            final hour = dt.hour == 0 || dt.hour == 12 ? 12 : dt.hour % 12;
-                                                                                            final ampm = dt.hour < 12 ? 'AM' : 'PM';
-                                                                                            return '$hour $ampm';
-                                                                                          })(),
-                                                                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: timeFontSize),
-                                                                                        ),
-                                                                                        const SizedBox(height: 2),
-                                                                                        Text(
-                                                                                          (() {
-                                                                                            final desc = f['desc'] ?? '';
-                                                                                            return desc.isNotEmpty ? '${desc[0].toUpperCase()}${desc.substring(1)}' : '--';
-                                                                                          })(),
-                                                                                          style: TextStyle(fontSize: detailFontSize),
-                                                                                          maxLines: 1,
-                                                                                          overflow: TextOverflow.ellipsis,
-                                                                                        ),
-                                                                                        Text(
-                                                                                          f['temp'] != null ? '${f['temp'].toStringAsFixed(1)}°F' : '--',
-                                                                                          style: TextStyle(fontSize: detailFontSize),
-                                                                                        ),
-                                                                                      ],
-                                                                                    ),
-                                                                                  );
-                                                                                },
-                                                                              ),
-                                                                            ),
-                                                                          );
-                                                                        },
-                                                                      ),
-                                                                    ),
-                                                                    SizedBox(
-                                                                      height: 22,
-                                                                      child: SliderTheme(
-                                                                        data: SliderTheme.of(context).copyWith(
-                                                                          trackHeight: 3,
-                                                                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                                                                          overlayShape: SliderComponentShape.noOverlay,
-                                                                        ),
-                                                                        child: Slider(
-                                                                          min: 0,
-                                                                          max: 1,
-                                                                          value: _forecastScrollValue,
-                                                                          onChanged: _onForecastSliderChanged,
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                              )
-                                                            : Container(
-                                                                width: double.infinity,
-                                                                padding: const EdgeInsets.all(12),
-                                                                decoration: BoxDecoration(
-                                                                  color: Colors.grey.shade100,
-                                                                  borderRadius: BorderRadius.circular(8),
-                                                                ),
-                                                                child: const Center(
-                                                                  child: Text('No forecast data available', style: TextStyle(fontSize: 12, color: Colors.grey), textAlign: TextAlign.center),
-                                                                ),
-                                                              ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
+                                              ),
                                             ),
                                           ),
-                                        ),
+                                          SizedBox(height: sectionGap * 0.7),
+                                          Expanded(
+                                            child: Card(
+                                              margin: EdgeInsets.zero,
+                                              elevation: 1.5,
+                                              clipBehavior: Clip.antiAlias,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(16),
+                                                side: const BorderSide(color: neutralCardBorder),
+                                              ),
+                                              color: const Color.fromRGBO(247, 247, 249, 1),
+                                              child: Padding(
+                                                padding: EdgeInsets.all(cardPadding),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                  children: [
+                                                    Padding(
+                                                      padding: EdgeInsets.only(bottom: sectionGap * 0.25),
+                                                      child: Row(
+                                                        children: [
+                                                          const Icon(Icons.cloud, color: Color.fromRGBO(158, 158, 158, 1)),
+                                                          const SizedBox(width: 7),
+                                                          Text('Weather', style: Theme.of(context).textTheme.titleMedium),
+                                                          const Spacer(),
+                                                          _weatherLoading || _forecastLoading
+                                                              ? const SizedBox(width: 19, height: 19, child: CircularProgressIndicator(strokeWidth: 2))
+                                                              : IconButton(
+                                                                  icon: const Icon(Icons.refresh),
+                                                                  iconSize: 21,
+                                                                  padding: EdgeInsets.zero,
+                                                                  constraints: BoxConstraints(minWidth: 30 + itemPadding / 2, minHeight: 30 + itemPadding / 2),
+                                                                  visualDensity: VisualDensity.compact,
+                                                                  tooltip: 'Refresh',
+                                                                  onPressed: _fetchWeatherAndForecast,
+                                                                ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    Divider(height: 1, thickness: 1, color: Colors.grey.shade400),
+                                                    SizedBox(
+                                                      height: sectionGap * (compactWeatherLayout ? 0.6 : 1.15),
+                                                    ),
+                                                    Padding(
+                                                      padding: EdgeInsets.only(bottom: sectionGap * 0.2),
+                                                      child: Text(_weatherInfo, style: const TextStyle(fontSize: 19), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                                    ),
+                                                    Padding(
+                                                      padding: EdgeInsets.only(bottom: sectionGap * 0.2),
+                                                      child: Text(_weatherAlert, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                                    ),
+                                                    SizedBox(
+                                                      height: sectionGap * (compactWeatherLayout ? 0.65 : 1.35),
+                                                    ),
+                                                    Padding(
+                                                      padding: EdgeInsets.only(bottom: sectionGap * 0.2),
+                                                      child: Text('Today\'s Forecast:', style: Theme.of(context).textTheme.titleSmall),
+                                                    ),
+                                                    Expanded(
+                                                      child: _forecast.isNotEmpty
+                                                          ? Listener(
+                                                              onPointerSignal: _onForecastPointerSignal,
+                                                              child: LayoutBuilder(
+                                                                builder: (context, constraints) {
+                                                                  final double availableHeight = constraints.maxHeight;
+                                                                  final double sliderHeight = compactWeatherLayout ? 18.0 : 22.0;
+                                                                  final double sliderGap = compactWeatherLayout ? 2.0 : 4.0;
+                                                                  final double forecastLaneHeight =
+                                                                    (availableHeight - sliderHeight - sliderGap)
+                                                                      .clamp(64.0, chipSide + 22)
+                                                                      .toDouble();
+                                                                  final double chipRenderSide =
+                                                                    forecastLaneHeight.clamp(64.0, chipSide).toDouble();
+                                                                  final double timeFontSize = (chipRenderSide * 0.17).clamp(9.0, 14.0).toDouble();
+                                                                  final double detailFontSize = (chipRenderSide * 0.14).clamp(8.0, 12.0).toDouble();
+                                                                  return Column(
+                                                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                                    children: [
+                                                                      SizedBox(
+                                                                        height: forecastLaneHeight,
+                                                                        child: ListView.separated(
+                                                                          controller: _forecastScrollController,
+                                                                          primary: false,
+                                                                          physics: const AlwaysScrollableScrollPhysics(),
+                                                                          scrollDirection: Axis.horizontal,
+                                                                          padding: EdgeInsets.zero,
+                                                                          itemCount: _forecast.length,
+                                                                          separatorBuilder: (_, __) => const SizedBox(width: 10),
+                                                                          itemBuilder: (context, index) {
+                                                                            final f = _forecast[index];
+                                                                            return Center(
+                                                                              child: Container(
+                                                                                width: chipRenderSide,
+                                                                                height: chipRenderSide,
+                                                                                padding: EdgeInsets.symmetric(horizontal: itemPadding * 0.5, vertical: itemSpacing + 1),
+                                                                                decoration: BoxDecoration(
+                                                                                  color: Colors.white,
+                                                                                  borderRadius: BorderRadius.circular(10),
+                                                                                  border: Border.all(color: Colors.grey.shade400, width: 1),
+                                                                                ),
+                                                                                child: Column(
+                                                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                                                                  children: [
+                                                                                    Text(
+                                                                                      (() {
+                                                                                        final dt = f['time'] as DateTime;
+                                                                                        final hour = dt.hour == 0 || dt.hour == 12 ? 12 : dt.hour % 12;
+                                                                                        final ampm = dt.hour < 12 ? 'AM' : 'PM';
+                                                                                        return '$hour $ampm';
+                                                                                      })(),
+                                                                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: timeFontSize),
+                                                                                    ),
+                                                                                    const SizedBox(height: 2),
+                                                                                    Text(
+                                                                                      (() {
+                                                                                        final desc = f['desc'] ?? '';
+                                                                                        return desc.isNotEmpty ? '${desc[0].toUpperCase()}${desc.substring(1)}' : '--';
+                                                                                      })(),
+                                                                                      style: TextStyle(fontSize: detailFontSize),
+                                                                                      maxLines: 1,
+                                                                                      overflow: TextOverflow.ellipsis,
+                                                                                    ),
+                                                                                    Text(
+                                                                                      f['temp'] != null ? '${f['temp'].toStringAsFixed(1)}°F' : '--',
+                                                                                      style: TextStyle(fontSize: detailFontSize),
+                                                                                    ),
+                                                                                  ],
+                                                                                ),
+                                                                              ),
+                                                                            );
+                                                                          },
+                                                                        ),
+                                                                      ),
+                                                                      SizedBox(height: sliderGap),
+                                                                      SizedBox(
+                                                                        height: sliderHeight,
+                                                                        child: SliderTheme(
+                                                                          data: SliderTheme.of(context).copyWith(
+                                                                            trackHeight: 3,
+                                                                            thumbShape: RoundSliderThumbShape(
+                                                                              enabledThumbRadius: compactWeatherLayout ? 5 : 6,
+                                                                            ),
+                                                                            overlayShape: SliderComponentShape.noOverlay,
+                                                                            activeTrackColor: Color.fromRGBO(69, 0, 132, 1),
+                                                                            inactiveTrackColor: Color.fromRGBO(198, 198, 204, 1),
+                                                                            thumbColor: Color.fromRGBO(69, 0, 132, 1),
+                                                                          ),
+                                                                          child: Slider(
+                                                                            min: 0,
+                                                                            max: 1,
+                                                                            value: _forecastScrollValue,
+                                                                            onChanged: _onForecastSliderChanged,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  );
+                                                                },
+                                                              ),
+                                                            )
+                                                          : Container(
+                                                              width: double.infinity,
+                                                              padding: const EdgeInsets.all(12),
+                                                              decoration: BoxDecoration(
+                                                                color: Colors.grey.shade100,
+                                                                borderRadius: BorderRadius.circular(8),
+                                                              ),
+                                                              child: const Center(
+                                                                child: Text('No forecast data available', style: TextStyle(fontSize: 12, color: Colors.grey), textAlign: TextAlign.center),
+                                                              ),
+                                                            ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
+                                  ),
                                 ),
                               ],
                           ),
