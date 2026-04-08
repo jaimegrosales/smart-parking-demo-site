@@ -729,6 +729,10 @@ class _TrafficPageState extends State<TrafficPage> {
     final mediaQuery = MediaQuery.of(context);
     final double topPanelInset = mediaQuery.padding.top + kToolbarHeight + 12;
     final double bottomPanelInset = mediaQuery.padding.bottom + 12;
+    final double viewportPanelHeight =
+      mediaQuery.size.height - topPanelInset - bottomPanelInset;
+    final double stackedPanelHeight =
+      (viewportPanelHeight * 2.25).clamp(980.0, 1650.0).toDouble();
     const double panelVerticalOffset = 0;
     final double pageHorizontalPadding =
         (mediaQuery.size.width * 0.028).clamp(14.0, 34.0).toDouble();
@@ -831,11 +835,15 @@ class _TrafficPageState extends State<TrafficPage> {
                   right: pageHorizontalPadding,
                   bottom: bottomPanelInset,
                 ),
-                child: Center(
-                  child: SizedBox(
-                    width: containerWidth,
-                    height: double.infinity,
-                    child: Transform.translate(
+                child: SingleChildScrollView(
+                  physics: stackCards
+                      ? const AlwaysScrollableScrollPhysics()
+                      : const NeverScrollableScrollPhysics(),
+                  child: Center(
+                    child: SizedBox(
+                      width: containerWidth,
+                      height: stackCards ? stackedPanelHeight : viewportPanelHeight,
+                      child: Transform.translate(
                       offset: const Offset(panelVerticalOffset, panelVerticalOffset),
                       child: MediaQuery(
                         data: mediaQuery.copyWith(
