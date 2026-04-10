@@ -732,7 +732,7 @@ class _TrafficPageState extends State<TrafficPage> {
     final double viewportPanelHeight =
       mediaQuery.size.height - topPanelInset - bottomPanelInset;
     final double stackedPanelHeight =
-      (viewportPanelHeight * 3.4).clamp(1500.0, 2600.0).toDouble();
+      (viewportPanelHeight * 1.8).clamp(980.0, 1320.0).toDouble();
     const double panelVerticalOffset = 0;
     final double pageHorizontalPadding =
         (mediaQuery.size.width * 0.028).clamp(14.0, 34.0).toDouble();
@@ -758,7 +758,7 @@ class _TrafficPageState extends State<TrafficPage> {
     final bool compactWeatherLayout =
       mediaQuery.size.width < 430 || mediaQuery.size.height < 760;
     final double containerWidth =
-      (mediaQuery.size.width * (stackCards ? 0.94 : 0.80)).clamp(320.0, 1100.0).toDouble();
+      (mediaQuery.size.width * 0.80).clamp(320.0, 1100.0).toDouble();
     const double cardsGap = 4.0; // match map/filter gap
     const Color neutralCardBorder = Color.fromRGBO(220, 220, 226, 1);
 
@@ -858,7 +858,7 @@ class _TrafficPageState extends State<TrafficPage> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Expanded(
-                                  flex: stackCards ? 4 : 6,
+                                  flex: stackCards ? 3 : 6,
                                   child: Card(
                                       margin: EdgeInsets.zero,
                                       elevation: 1.5,
@@ -962,7 +962,7 @@ class _TrafficPageState extends State<TrafficPage> {
                                   height: stackCards ? cardsGap : 0,
                                 ),
                                 Expanded(
-                                  flex: stackCards ? 9 : 4,
+                                  flex: stackCards ? 5 : 4,
                                   child: MediaQuery(
                                     data: mediaQuery.copyWith(
                                       textScaler: TextScaler.linear(rightPanelScale),
@@ -973,7 +973,7 @@ class _TrafficPageState extends State<TrafficPage> {
                                         crossAxisAlignment: CrossAxisAlignment.stretch,
                                         children: [
                                           Expanded(
-                                            flex: stackCards ? 5 : 1,
+                                            flex: stackCards ? 1 : 1,
                                             child: Card(
                                               margin: EdgeInsets.zero,
                                               elevation: 1.5,
@@ -1087,7 +1087,7 @@ class _TrafficPageState extends State<TrafficPage> {
                                           ),
                                           SizedBox(height: sectionGap * 0.7),
                                           Expanded(
-                                            flex: stackCards ? 6 : 1,
+                                            flex: stackCards ? 1 : 1,
                                             child: Card(
                                               margin: EdgeInsets.zero,
                                               elevation: 1.5,

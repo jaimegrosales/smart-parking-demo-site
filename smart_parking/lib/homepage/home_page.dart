@@ -194,76 +194,87 @@ class HomePageState extends State<HomePage> {
       String keyPrefix, Future<Map<int, int>?> future, String title,
       {double imageWidth = 80}) {
     final String imagePath = boxImagePaths[keyPrefix] ?? '';
-    return Row(
-      children: [
-        const SizedBox(width: 18), // Add space from left edge
-        Container(
-          width: imageWidth * 1.5, // Make image even larger
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: imagePath.isNotEmpty
-                ? Center(
-                    child: Image.asset(
-                      imagePath,
-                      width: imageWidth * 1.5,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Center(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool compactCard = constraints.maxWidth < 700;
+        final double imagePanelWidth = compactCard
+            ? (constraints.maxWidth * 0.34).clamp(92.0, 140.0).toDouble()
+            : (imageWidth * 1.5);
+        final double titleFontSize = compactCard ? 18 : 22;
+        final double titleLineHeight = compactCard ? 1.4 : 2.0;
+
+        return Row(
+          children: [
+            SizedBox(width: compactCard ? 10 : 18),
+            Container(
+              width: imagePanelWidth,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: imagePath.isNotEmpty
+                    ? Center(
+                        child: Image.asset(
+                          imagePath,
+                          width: imagePanelWidth,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Center(
+                            child: Icon(
+                              Icons.broken_image,
+                              size: 36,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ),
+                      )
+                    : const Center(
                         child: Icon(
-                          Icons.broken_image,
-                          size: 36,
+                          Icons.image,
+                          size: 48,
                           color: Colors.grey,
                         ),
                       ),
-                    ),
-                  )
-                : const Center(
-                    child: Icon(
-                      Icons.image,
-                      size: 48,
-                      color: Colors.grey,
+              ),
+            ),
+            SizedBox(width: compactCard ? 6 : 8),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      height: titleLineHeight,
+                      fontSize: titleFontSize,
+                      color: const Color.fromRGBO(0, 0, 0, 1),
                     ),
                   ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  height: 2,
-                  fontSize: 22,
-                  color: Color.fromRGBO(0, 0, 0, 1),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 0),
-                  child: FutureBuilder(
-                    future: future,
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData && snapshot.data is Map<int, int>) {
-                        return _buildAllModesFor(
-                            keyPrefix, snapshot.data as Map<int, int>);
-                      } else {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                    },
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 0),
+                      child: FutureBuilder(
+                        future: future,
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData && snapshot.data is Map<int, int>) {
+                            return _buildAllModesFor(
+                                keyPrefix, snapshot.data as Map<int, int>);
+                          } else {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+                        },
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -868,6 +879,10 @@ class HomePageState extends State<HomePage> {
       buttonWidth = screenWidth * 0.45;
     }
 
+    final double liveCounterCardAspectRatio = screenWidth < 460
+        ? 2.0
+        : (screenWidth < 760 ? 2.45 : 3.4286);
+
     return Scaffold(
       backgroundColor: const Color.fromRGBO(0, 0, 0, 1),
       extendBodyBehindAppBar: true,
@@ -952,7 +967,7 @@ class HomePageState extends State<HomePage> {
                           shrinkWrap: true,
                           mainAxisSpacing: 5.0,
                           crossAxisSpacing: 5.0,
-                          childAspectRatio: 3.4286,
+                          childAspectRatio: liveCounterCardAspectRatio,
                           children: commuter,
                         ),
                       ],

@@ -440,95 +440,117 @@ class _SearchPageState extends State<SearchPage> {
                     offset: const Offset(0, panelVerticalOffset),
                     child: SizedBox(
                       width: containerWidth,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: GoogleMap(
-                              onMapCreated: _onMapCreated,
-                              initialCameraPosition: CameraPosition(
-                                target: _center,
-                                zoom: 15.5,
-                              ),
-                              markers: _markers,
-                              myLocationEnabled: true,
-                              myLocationButtonEnabled: true,
-                              mapType: MapType.normal,
+                      height: double.infinity,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final bool stackFilterBelowMap = constraints.maxWidth < 760;
+                          final double narrowFilterHeight =
+                              (constraints.maxHeight * 0.32).clamp(180.0, 280.0).toDouble();
+
+                          final Widget mapPanel = GoogleMap(
+                            onMapCreated: _onMapCreated,
+                            initialCameraPosition: CameraPosition(
+                              target: _center,
+                              zoom: 15.5,
                             ),
-                          ),
-                          const SizedBox(width: 4),
-                          SizedBox(
-                            width: 132,
-                            child: Material(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.max,
-                                children: [
-                                  Padding(
-                                    padding:
-                                        const EdgeInsets.symmetric(horizontal: 8),
-                                    child: LayoutBuilder(
-                                      builder: (context, constraints) {
-                                        final menuWidth = constraints.maxWidth;
-                                        return DropdownMenu<String>(
-                                          initialSelection: selectedType,
-                                          hintText: 'Filter',
-                                          width: menuWidth,
-                                          menuHeight: 48.0 * markerTypes.length,
-                                          menuStyle: const MenuStyle(
-                                            alignment: Alignment.bottomLeft,
-                                          ),
-                                          inputDecorationTheme: const InputDecorationTheme(
-                                            border: InputBorder.none,
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                          ),
-                                          dropdownMenuEntries: markerTypes
-                                              .map((type) => DropdownMenuEntry<String>(
-                                                    value: type,
-                                                    label: type,
-                                                  ))
-                                              .toList(),
-                                          onSelected: (value) {
-                                            if (value != null) {
-                                              _onCategorySelected(value);
-                                            }
-                                          },
-                                        );
-                                      },
-                                    ),
+                            markers: _markers,
+                            myLocationEnabled: true,
+                            myLocationButtonEnabled: true,
+                            mapType: MapType.normal,
+                          );
+
+                          final Widget filterPanel = Material(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.max,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  child: LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final menuWidth = constraints.maxWidth;
+                                      return DropdownMenu<String>(
+                                        initialSelection: selectedType,
+                                        hintText: 'Filter',
+                                        width: menuWidth,
+                                        menuHeight: 48.0 * markerTypes.length,
+                                        menuStyle: const MenuStyle(
+                                          alignment: Alignment.bottomLeft,
+                                        ),
+                                        inputDecorationTheme: const InputDecorationTheme(
+                                          border: InputBorder.none,
+                                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                        ),
+                                        dropdownMenuEntries: markerTypes
+                                            .map((type) => DropdownMenuEntry<String>(
+                                                  value: type,
+                                                  label: type,
+                                                ))
+                                            .toList(),
+                                        onSelected: (value) {
+                                          if (value != null) {
+                                            _onCategorySelected(value);
+                                          }
+                                        },
+                                      );
+                                    },
                                   ),
-                                  const Divider(height: 1),
-                                  Expanded(
-                                    child: ListView.builder(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 6),
-                                      itemCount: visibleMarkers.length,
-                                      itemBuilder: (context, index) {
-                                        final marker = visibleMarkers[index];
-                                        return ListTile(
-                                          dense: true,
-                                          visualDensity: VisualDensity.compact,
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(horizontal: 6),
-                                          leading: Icon(
-                                            Icons.location_on,
-                                            color: _iconColorForMarker(marker),
-                                            size: 20,
-                                          ),
-                                          title: Text(
-                                            marker.markerId.value,
-                                            style: const TextStyle(fontSize: 12),
-                                          ),
-                                          onTap: () => _focusMarker(marker),
-                                        );
-                                      },
-                                    ),
+                                ),
+                                const Divider(height: 1),
+                                Expanded(
+                                  child: ListView.builder(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                                    itemCount: visibleMarkers.length,
+                                    itemBuilder: (context, index) {
+                                      final marker = visibleMarkers[index];
+                                      return ListTile(
+                                        dense: true,
+                                        visualDensity: VisualDensity.compact,
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 6),
+                                        leading: Icon(
+                                          Icons.location_on,
+                                          color: _iconColorForMarker(marker),
+                                          size: 20,
+                                        ),
+                                        title: Text(
+                                          marker.markerId.value,
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
+                                        onTap: () => _focusMarker(marker),
+                                      );
+                                    },
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
+                          );
+
+                          if (stackFilterBelowMap) {
+                            return Column(
+                              children: [
+                                Expanded(child: mapPanel),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  height: narrowFilterHeight,
+                                  width: double.infinity,
+                                  child: filterPanel,
+                                ),
+                              ],
+                            );
+                          }
+
+                          return Row(
+                            children: [
+                              Expanded(child: mapPanel),
+                              const SizedBox(width: 4),
+                              SizedBox(
+                                width: 132,
+                                child: filterPanel,
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ),

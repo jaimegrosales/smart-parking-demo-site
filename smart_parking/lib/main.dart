@@ -104,6 +104,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool useCompactNav = screenWidth < 680;
+    final double navWidthFactor = useCompactNav ? 0.96 : 0.80;
+    final NavigationDestinationLabelBehavior navLabelBehavior = useCompactNav
+      ? NavigationDestinationLabelBehavior.alwaysHide
+      : NavigationDestinationLabelBehavior.alwaysShow;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
@@ -115,7 +122,7 @@ class _MyHomePageState extends State<MyHomePage> {
             height: 76,
             child: Center(
               child: Container(
-                width: MediaQuery.of(context).size.width * 0.80,
+                width: MediaQuery.of(context).size.width * navWidthFactor,
                 height: 56,
                 decoration: BoxDecoration(
                   // off-white box behind the pill
@@ -143,6 +150,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   child: NavigationBar(
                     backgroundColor: Colors.transparent,
+                    labelBehavior: navLabelBehavior,
                     onDestinationSelected: (int index) {
                       setState(() {
                         currentPageIndex = index;
@@ -150,8 +158,8 @@ class _MyHomePageState extends State<MyHomePage> {
                     },
                     indicatorColor: const Color.fromRGBO(203, 182, 119, .75),
                     selectedIndex: currentPageIndex,
-                    destinations: const <NavigationDestination>[
-                      NavigationDestination(
+                    destinations: <NavigationDestination>[
+                      const NavigationDestination(
                         icon: Icon(Icons.analytics_outlined),
                         label: 'Predicter',
                       ),
@@ -160,15 +168,15 @@ class _MyHomePageState extends State<MyHomePage> {
                         icon: Icon(Icons.leaderboard_outlined),
                         label: 'Live Counter',
                       ),
-                      NavigationDestination(
+                      const NavigationDestination(
                         icon: Icon(Icons.today_outlined),
                         label: 'Today',
                       ),
-                      NavigationDestination(
+                      const NavigationDestination(
                         icon: Icon(Icons.map_outlined),
                         label: 'Map',
                       ),
-                      NavigationDestination(
+                      const NavigationDestination(
                         icon: Icon(Icons.manage_accounts_outlined),
                         label: 'Account',
                       ),
