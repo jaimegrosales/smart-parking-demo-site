@@ -8,11 +8,15 @@ class AppBarDateTimeCenter extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final bool useCompact = screenWidth < 760;
     final double fontSize = screenWidth < 430 ? 11 : (useCompact ? 13 : 15);
+    final bool anchorRight = screenWidth < 760;
 
     return IgnorePointer(
       child: SafeArea(
-        child: Center(
-          child: StreamBuilder<DateTime>(
+        child: Align(
+          alignment: anchorRight ? Alignment.centerRight : Alignment.center,
+          child: Padding(
+            padding: EdgeInsets.only(right: anchorRight ? 56 : 0),
+            child: StreamBuilder<DateTime>(
             stream: Stream<DateTime>.periodic(
               const Duration(seconds: 1),
               (_) => DateTime.now(),
@@ -57,11 +61,12 @@ class AppBarDateTimeCenter extends StatelessWidget {
                   fontSize: fontSize,
                   fontWeight: FontWeight.w500,
                 ),
-                textAlign: TextAlign.center,
+                textAlign: anchorRight ? TextAlign.right : TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               );
             },
+          ),
           ),
         ),
       ),
