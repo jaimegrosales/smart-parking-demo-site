@@ -887,6 +887,7 @@ class HomePageState extends State<HomePage> {
       backgroundColor: const Color.fromRGBO(0, 0, 0, 1),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        centerTitle: false,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

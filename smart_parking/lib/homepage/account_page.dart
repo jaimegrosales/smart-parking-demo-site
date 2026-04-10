@@ -156,6 +156,7 @@ class _AccountPageState extends State<AccountPage> {
       extendBody: true,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        centerTitle: false,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

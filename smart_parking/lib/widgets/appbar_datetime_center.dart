@@ -6,9 +6,8 @@ class AppBarDateTimeCenter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    if (screenWidth < 430) {
-      return const SizedBox.shrink();
-    }
+    final bool useCompact = screenWidth < 760;
+    final double fontSize = screenWidth < 430 ? 11 : (useCompact ? 13 : 15);
 
     return IgnorePointer(
       child: SafeArea(
@@ -49,17 +48,18 @@ class AppBarDateTimeCenter extends StatelessWidget {
               final fullLabel =
                   '${weekdays[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}  |  $hour12:${now.minute.toString().padLeft(2, '0')} $amPm';
               final compactLabel =
-                  '$hour12:${now.minute.toString().padLeft(2, '0')} $amPm';
-              final bool useCompact = screenWidth < 760;
+                  '${weekdays[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}';
 
               return Text(
                 useCompact ? compactLabel : fullLabel,
                 style: TextStyle(
-                  color: Color.fromRGBO(235, 235, 240, 1),
-                  fontSize: useCompact ? 13 : 15,
+                  color: const Color.fromRGBO(235, 235, 240, 1),
+                  fontSize: fontSize,
                   fontWeight: FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               );
             },
           ),

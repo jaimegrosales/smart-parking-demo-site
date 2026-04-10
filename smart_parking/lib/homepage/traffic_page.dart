@@ -767,6 +767,7 @@ class _TrafficPageState extends State<TrafficPage> {
       extendBody: true,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        centerTitle: false,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

@@ -366,6 +366,7 @@ class _SearchPageState extends State<SearchPage> {
       extendBody: true,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        centerTitle: false,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

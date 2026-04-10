@@ -122,6 +122,7 @@ class _WeatherPageState extends State<WeatherPage> {
       backgroundColor: const Color.fromRGBO(0, 0, 0, 1),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+          centerTitle: false,
         title: Text(
           "Weather Information",
           style: GoogleFonts.montserrat(fontWeight: FontWeight.w500),

@@ -537,6 +537,7 @@ The prediction service is not responding. Please try again.''';
       backgroundColor: const Color.fromRGBO(0, 0, 0, 1),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        centerTitle: false,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
