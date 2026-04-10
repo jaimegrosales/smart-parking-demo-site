@@ -188,6 +188,15 @@ class _PredicterPageState extends State<PredicterPage> {
       return;
     }
 
+    if (_selectedGarage == 'Chesapeake Hall Parking Deck' && _selectedZoneType == 'faculty') {
+      setState(() {
+        _predictionMessage =
+            'Chesapeake Hall Parking Deck does not support faculty predictions. '
+            'Please choose commuter, accessible, or electric.';
+      });
+      return;
+    }
+
     setState(() {
       _calculating = true;
       _predictionMessage = _isRouteMode
