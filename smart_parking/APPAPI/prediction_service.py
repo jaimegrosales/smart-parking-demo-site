@@ -27,7 +27,7 @@ class ParkingPredictionService:
                 'accessible': 35, 'commuter': 4, 'electric': 36, 'faculty': 6  
             },
             'Warsaw Avenue Parking Deck': {
-                'accessible': 38, 'commuter': 42, 'electric': 39, 'faculty': 41
+                'accessible': 38, 'commuter': 42, 'electric': 39, 'faculty': 2
             },
             'Champions Drive Parking Deck': {
                 'accessible': 31, 'commuter': 13, 'electric': 40, 'faculty': 32
