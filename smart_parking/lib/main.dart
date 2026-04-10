@@ -161,7 +161,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     destinations: <NavigationDestination>[
                       const NavigationDestination(
                         icon: Icon(Icons.analytics_outlined),
-                        label: 'Predicter',
+                        label: 'Predictor',
                       ),
                       NavigationDestination(
                         selectedIcon: Icon(Icons.leaderboard),

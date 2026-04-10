@@ -542,7 +542,7 @@ The prediction service is not responding. Please try again.''';
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Predicter',
+              'Predictor',
               style: GoogleFonts.montserrat(fontWeight: FontWeight.w500),
             ),
             const SizedBox(width: 8),
