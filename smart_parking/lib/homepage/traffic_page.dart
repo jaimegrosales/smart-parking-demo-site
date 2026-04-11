@@ -91,8 +91,8 @@ class _TrafficPageState extends State<TrafficPage> {
                 isUtc: true)
             .toLocal();
         if (dt.day == today.day) {
-          final temp = entry['main']?['temp'];
-          final desc = entry['weather']?[0]?['description'] ?? '';
+          final temp = entry['temp'];
+          final desc = entry['desc'] ?? '';
           if (temp != null || (desc is String && desc.isNotEmpty)) {
             forecasts.add({
               'time': DateTime(today.year, today.month, today.day, dt.hour),
