@@ -16,6 +16,7 @@ import 'special_events_loader.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/appbar_datetime_center.dart';
+import '../config/api_config.dart';
 
 class TrafficPage extends StatefulWidget {
   const TrafficPage({super.key});
@@ -27,6 +28,7 @@ class TrafficPage extends StatefulWidget {
 class _TrafficPageState extends State<TrafficPage> {
   static const String _tomtomApiKey =
       String.fromEnvironment('TOMTOM_API_KEY', defaultValue: '');
+  static const String _backendBaseUrl = ApiConfig.backendBaseUrl;
 
   final ScrollController _forecastScrollController = ScrollController();
   double _forecastScrollValue = 0;
@@ -73,18 +75,13 @@ class _TrafficPageState extends State<TrafficPage> {
 
   Future<List<Map<String, dynamic>>> getWeatherForecast() async {
     try {
-      const double lat = 38.4495;
-      const double lon = -78.8690;
-      const String apiKey = 'baafe52addb7f3b1397a36e85a1cf4e9';
-      final url = Uri.parse(
-        'https://api.openweathermap.org/data/2.5/forecast?lat=$lat&lon=$lon&appid=$apiKey&units=imperial',
-      );
+      final url = Uri.parse('$_backendBaseUrl/weather/forecast');
       final response = await http.get(url);
       if (response.statusCode != 200) {
         return [];
       }
       final data = json.decode(response.body);
-      final List<dynamic> list = data['list'] ?? [];
+      final List<dynamic> list = data['forecast'] ?? [];
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       List<Map<String, dynamic>> forecasts = [];
@@ -113,35 +110,16 @@ class _TrafficPageState extends State<TrafficPage> {
 
   Future<String> getWeatherStatus() async {
     try {
-      const double lat = 38.4495;
-      const double lon = -78.8690;
-      const String apiKey = 'baafe52addb7f3b1397a36e85a1cf4e9';
-      final url = Uri.parse(
-        'https://api.openweathermap.org/data/2.5/weather?lat=$lat&lon=$lon&appid=$apiKey&units=imperial',
-      );
+      final url = Uri.parse('$_backendBaseUrl/weather/current');
       final response = await http.get(url);
       if (response.statusCode != 200) {
         return "Failed to retrieve weather data (${response.statusCode})";
       }
       final data = json.decode(response.body);
-      final String description =
-          (data['weather'] != null && data['weather'].isNotEmpty)
-              ? data['weather'][0]['description']
-              : 'No description';
-      final double temp = data['main'] != null && data['main']['temp'] != null
-          ? data['main']['temp'].toDouble()
-          : double.nan;
-      String weatherString =
-          '${description[0].toUpperCase()}${description.substring(1)}, ${temp.toStringAsFixed(1)}°F';
-      if (data['alerts'] != null &&
-          data['alerts'] is List &&
-          data['alerts'].isNotEmpty) {
-        final alert = data['alerts'][0];
-        if (alert['event'] != null) {
-          weatherString += '\nALERT: ${alert['event']}';
-        }
+      if (data['summary'] != null && data['summary'].toString().isNotEmpty) {
+        return data['summary'].toString();
       }
-      return weatherString;
+      return 'Weather data unavailable';
     } catch (e) {
       return "Error: $e";
     }

@@ -13,6 +13,10 @@ app = Flask(__name__)
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 
+OPENWEATHER_BASE_URL = 'https://api.openweathermap.org/data/2.5'
+DEFAULT_WEATHER_LAT = 38.4495
+DEFAULT_WEATHER_LON = -78.8690
+
 
 def _get_repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -162,6 +166,25 @@ def _start_live_updater() -> None:
 
 _start_live_updater()
 
+
+def _openweather_api_key() -> str:
+    return os.getenv('OPENWEATHER_API_KEY', '').strip()
+
+
+def _weather_summary_from_payload(payload: dict) -> str:
+    description = 'No description'
+    if isinstance(payload.get('weather'), list) and payload['weather']:
+        description = payload['weather'][0].get('description') or description
+    description = description[:1].upper() + description[1:] if description else 'No description'
+
+    temp_val = None
+    if isinstance(payload.get('main'), dict):
+        temp_val = payload['main'].get('temp')
+
+    if isinstance(temp_val, (int, float)):
+        return f"{description}, {float(temp_val):.1f}°F"
+    return description
+
 # Get a single parking deck by name
 @app.route('/decks/<string:deck_name>', methods=['GET'])
 @cross_origin()
@@ -235,6 +258,96 @@ def predict_parking():
             "prediction_time": datetime.now().isoformat(),
         }
     })
+
+
+@app.route('/weather/current', methods=['GET'])
+@cross_origin()
+def weather_current():
+    api_key = _openweather_api_key()
+    if not api_key:
+        return jsonify({
+            'error': 'OPENWEATHER_API_KEY is not configured on backend'
+        }), 500
+
+    lat = request.args.get('lat', type=float, default=DEFAULT_WEATHER_LAT)
+    lon = request.args.get('lon', type=float, default=DEFAULT_WEATHER_LON)
+
+    try:
+        response = requests.get(
+            f'{OPENWEATHER_BASE_URL}/weather',
+            params={
+                'lat': lat,
+                'lon': lon,
+                'appid': api_key,
+                'units': 'imperial',
+            },
+            timeout=15,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        return jsonify({
+            'success': True,
+            'summary': _weather_summary_from_payload(payload),
+            'raw': payload,
+        })
+    except requests.HTTPError as exc:
+        status = exc.response.status_code if exc.response is not None else 502
+        return jsonify({'error': f'Weather API HTTP error: {exc}'}), status
+    except requests.RequestException as exc:
+        return jsonify({'error': f'Weather API request failed: {exc}'}), 502
+
+
+@app.route('/weather/forecast', methods=['GET'])
+@cross_origin()
+def weather_forecast():
+    api_key = _openweather_api_key()
+    if not api_key:
+        return jsonify({
+            'error': 'OPENWEATHER_API_KEY is not configured on backend'
+        }), 500
+
+    lat = request.args.get('lat', type=float, default=DEFAULT_WEATHER_LAT)
+    lon = request.args.get('lon', type=float, default=DEFAULT_WEATHER_LON)
+
+    try:
+        response = requests.get(
+            f'{OPENWEATHER_BASE_URL}/forecast',
+            params={
+                'lat': lat,
+                'lon': lon,
+                'appid': api_key,
+                'units': 'imperial',
+            },
+            timeout=15,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        entries = payload.get('list', []) if isinstance(payload, dict) else []
+        normalized = []
+        for entry in entries:
+            main = entry.get('main') or {}
+            weather_items = entry.get('weather') or []
+            description = ''
+            if isinstance(weather_items, list) and weather_items:
+                description = weather_items[0].get('description', '')
+            normalized.append({
+                'dt': entry.get('dt'),
+                'temp': main.get('temp'),
+                'desc': description,
+            })
+
+        return jsonify({
+            'success': True,
+            'forecast': normalized,
+            'raw': payload,
+        })
+    except requests.HTTPError as exc:
+        status = exc.response.status_code if exc.response is not None else 502
+        return jsonify({'error': f'Forecast API HTTP error: {exc}'}), status
+    except requests.RequestException as exc:
+        return jsonify({'error': f'Forecast API request failed: {exc}'}), 502
+
+
 @app.route('/', methods=['GET'])
 @cross_origin()
 def home():
