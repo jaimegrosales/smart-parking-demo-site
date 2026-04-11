@@ -11,6 +11,37 @@
 - GET /weather/current
 - GET /weather/forecast
 
+## Setup and Run
+
+### Prerequisites
+- Flutter SDK (for web frontend)
+- Python 3 (for Flask backend)
+- Access to required API keys
+
+### Environment Variables and Secrets
+- Backend (Render): `OPENWEATHER_API_KEY`
+- Frontend build (GitHub Actions secret): `TOMTOM_API_KEY`
+- Frontend build variable (GitHub Actions variable): `BACKEND_BASE_URL`
+
+### Run Backend Locally (Flask)
+1. Open the `smart_parking/APPAPI` directory.
+2. Install Python dependencies (if needed).
+3. Set `OPENWEATHER_API_KEY` in your shell environment.
+4. Run `python appAPI.py`.
+5. Verify backend health at `http://127.0.0.1:8000/health`.
+
+### Run Frontend Locally (Flutter Web)
+1. Open the `smart_parking` directory.
+2. Run `flutter pub get`.
+3. Run:
+    `flutter run -d chrome --dart-define=BACKEND_BASE_URL=http://127.0.0.1:8000 --dart-define=TOMTOM_API_KEY=YOUR_TOMTOM_KEY`
+
+### Quick Verification
+1. Open the app and navigate to the Today page.
+2. Confirm weather summary and forecast chips are populated.
+3. Confirm traffic status loads.
+4. Test a prediction request from the Predictor page.
+
 ## sql-to-csv.py
 - This code takes a .sql file and converts it into a .csv for easier use in machine learning
 - Backup data is pulled as a .sql
