@@ -1,5 +1,16 @@
 # smart-parking-capstone
 
+## Live Deployment
+- Backend API (Render): https://smart-parking-demo-site.onrender.com
+- Backend Health Check: https://smart-parking-demo-site.onrender.com/health
+- Backend Version Info: https://smart-parking-demo-site.onrender.com/version
+
+### Common API Endpoints
+- GET /decks
+- POST /predict
+- GET /weather/current
+- GET /weather/forecast
+
 ## sql-to-csv.py
 - This code takes a .sql file and converts it into a .csv for easier use in machine learning
 - Backup data is pulled as a .sql
